@@ -323,6 +323,7 @@ export default function App() {
                     fontFamily: "'JetBrains Mono', 'Courier New', monospace",
                     fontSize: 13,
                     renderSideBySide: true,
+                    originalEditable: true,
                     wordWrap: "on",
                   }}
                 />
