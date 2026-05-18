@@ -20,7 +20,7 @@ import {
   ChevronRight,
   WrapText
 } from 'lucide-react';
-import { cn } from './lib/utils';
+import { cn } from '../lib/utils';
 
 type Mode = 'format' | 'diff' | 'query' | 'convert';
 
@@ -401,4 +401,3 @@ export default function App() {
     </div>
   );
 }
-
