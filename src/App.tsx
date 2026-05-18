@@ -28,6 +28,8 @@ export default function App() {
   const [mode, setMode] = useState<Mode>('format');
   const [input, setInput] = useState<string>('{\n  "tool": "JSON Dev Tool",\n  "version": 1.0,\n  "features": [\n    "Format",\n    "Validate",\n    "Diff",\n    "Query",\n    "YAML"\n  ],\n  "is_awesome": true\n}');
   const [output, setOutput] = useState<string>('');
+  const [outputLanguage, setOutputLanguage] = useState<'json' | 'yaml'>('json');
+  const [convertSourceFormat, setConvertSourceFormat] = useState<'json' | 'yaml' | null>(null);
   
   // States for Diff mode
   const [diffOriginal, setDiffOriginal] = useState<string>('{\n  "status": "ok",\n  "code": 200\n}');
@@ -63,19 +65,56 @@ export default function App() {
 
     try {
       if (mode === 'convert') {
-        // Auto detect if it's YAML or JSON
-        if (customInput.trim().startsWith('{') || customInput.trim().startsWith('[')) {
-          // JSON to YAML
-          const parsed = JSON.parse(customInput);
-          setOutput(YAML.stringify(parsed));
-          setErrorStatus({ message: 'Converted JSON to YAML', isError: false });
+        // Detect input format by actual parse (JSON first, then YAML)
+        let parsed: any;
+        let sourceFormat: 'json' | 'yaml';
+        try {
+          parsed = JSON.parse(customInput);
+          sourceFormat = 'json';
+        } catch {
+          parsed = YAML.parse(customInput);
+          sourceFormat = 'yaml';
+        }
+        setConvertSourceFormat(sourceFormat);
+
+        if (sourceFormat === 'json') {
+          setOutputLanguage('yaml');
+          if (action === 'minify') {
+            setOutput(
+              YAML.stringify(parsed, {
+                collectionStyle: 'flow',
+                flowCollectionPadding: false,
+                lineWidth: 0,
+                minContentWidth: 0,
+                simpleKeys: true,
+              }),
+            );
+            setErrorStatus({ message: 'Converted JSON to YAML (Minified)', isError: false });
+          } else {
+            setOutput(YAML.stringify(parsed));
+            if (action === 'validate') {
+              setErrorStatus({ message: 'Valid JSON (Converted to YAML)', isError: false });
+            } else {
+              setErrorStatus({ message: 'Converted JSON to YAML', isError: false });
+            }
+          }
         } else {
-          // YAML to JSON
-          const parsed = YAML.parse(customInput);
-          setOutput(JSON.stringify(parsed, null, 2));
-          setErrorStatus({ message: 'Converted YAML to JSON', isError: false });
+          setOutputLanguage('json');
+          if (action === 'minify') {
+            setOutput(JSON.stringify(parsed));
+            setErrorStatus({ message: 'Converted YAML to JSON (Minified)', isError: false });
+          } else {
+            setOutput(JSON.stringify(parsed, null, 2));
+            if (action === 'validate') {
+              setErrorStatus({ message: 'Valid YAML (Converted to JSON)', isError: false });
+            } else {
+              setErrorStatus({ message: 'Converted YAML to JSON', isError: false });
+            }
+          }
         }
       } else if (mode === 'query') {
+        setConvertSourceFormat(null);
+        setOutputLanguage('json');
         const parsed = JSON.parse(customInput);
         let result;
         try {
@@ -87,6 +126,8 @@ export default function App() {
         }
       } else {
         // Format, Minify or Validate
+        setConvertSourceFormat(null);
+        setOutputLanguage('json');
         const parsed = JSON.parse(customInput);
         if (action === 'minify') {
           setOutput(JSON.stringify(parsed));
@@ -243,12 +284,16 @@ export default function App() {
         {mode !== 'diff' && (
           <div className="flex items-center justify-between px-6 py-2 bg-[#1A1A1C] border-b border-[#262626]">
             <div className="flex gap-2">
-              <button onClick={handleFormat} className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors">
-                <AlignLeft className="w-3.5 h-3.5" /> Format
-              </button>
-              <button onClick={handleMinify} className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors">
-                <Minimize2 className="w-3.5 h-3.5" /> Minify
-              </button>
+              {!(mode === 'convert' && convertSourceFormat === 'json') && (
+                <button onClick={handleFormat} className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors">
+                  <AlignLeft className="w-3.5 h-3.5" /> Format
+                </button>
+              )}
+              {!(mode === 'convert' && convertSourceFormat === 'json') && (
+                <button onClick={handleMinify} className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors">
+                  <Minimize2 className="w-3.5 h-3.5" /> Minify
+                </button>
+              )}
               {mode === 'convert' && (
                 <button onClick={() => processJson('convert')} className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors">
                   <FileCode2 className="w-3.5 h-3.5" /> Convert
@@ -286,7 +331,7 @@ export default function App() {
               <button onClick={() => copyToClipboard(output)} className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors">
                 <Copy className="w-3.5 h-3.5" /> Copy
               </button>
-              <button onClick={() => downloadFile(output, 'result.json')} className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors">
+              <button onClick={() => downloadFile(output, mode === 'convert' && outputLanguage === 'yaml' ? 'result.yaml' : 'result.json')} className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors">
                 <Download className="w-3.5 h-3.5" /> Down
               </button>
             </div>
@@ -376,7 +421,7 @@ export default function App() {
                 <div className="flex-1 bg-[#0F0F11]">
                    <Editor
                     height="100%"
-                    language={mode === 'convert' ? (output.startsWith('{') || output.startsWith('[') ? 'json' : 'yaml') : 'json'}
+                    language={mode === 'convert' ? outputLanguage : 'json'}
                     theme={theme}
                     value={output}
                     onMount={(editor) => {
