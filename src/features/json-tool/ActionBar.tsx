@@ -37,7 +37,32 @@ export function ActionBar({
   onCopy,
   onDownload,
 }: ActionBarProps) {
-  const hideFormatMinify = mode === 'query' || (mode === 'convert' && convertSourceFormat === 'json');
+  const hideFormatMinify =
+    mode === 'query' ||
+    mode === 'schemaGenerate' ||
+    mode === 'schemaValidate' ||
+    mode === 'convertCsv' ||
+    mode === 'escape' ||
+    (mode === 'convert' && convertSourceFormat === 'json');
+
+  const actionLabel =
+    mode === 'schemaGenerate'
+      ? 'Generate'
+      : mode === 'schemaValidate'
+        ? 'Validate Schema'
+        : mode === 'convertCsv'
+          ? 'Convert'
+          : mode === 'escape'
+            ? 'Escape/Unescape'
+            : 'Validate';
+  const downloadFilename =
+    mode === 'convert' && outputLanguage === 'yaml'
+      ? 'result.yaml'
+      : mode === 'convertCsv' && outputLanguage === 'plaintext'
+        ? 'result.csv'
+        : mode === 'escape' && outputLanguage === 'plaintext'
+          ? 'result.txt'
+          : 'result.json';
 
   return (
     <div className="flex items-center justify-between px-6 py-2 bg-[#1A1A1C] border-b border-[#262626]">
@@ -62,7 +87,7 @@ export function ActionBar({
           onClick={onValidate}
           className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-blue-500 bg-blue-500/10 text-blue-400 transition-colors"
         >
-          <CheckCircle2 className="w-3.5 h-3.5" /> Validate
+          <CheckCircle2 className="w-3.5 h-3.5" /> {actionLabel}
         </button>
       </div>
 
@@ -99,7 +124,7 @@ export function ActionBar({
           <Copy className="w-3.5 h-3.5" /> Copy
         </button>
         <button
-          onClick={() => onDownload(output, mode === 'convert' && outputLanguage === 'yaml' ? 'result.yaml' : 'result.json')}
+          onClick={() => onDownload(output, downloadFilename)}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Download className="w-3.5 h-3.5" /> Down

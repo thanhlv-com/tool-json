@@ -29,17 +29,45 @@ export function EditorWorkspace({
   onInputEditorMount,
   onOutputEditorMount,
 }: EditorWorkspaceProps) {
+  const leftLabel =
+    mode === 'convert'
+      ? 'INPUT_SOURCE.yml/json'
+      : mode === 'schemaGenerate'
+        ? 'SAMPLE_JSON'
+        : mode === 'convertCsv'
+          ? 'INPUT.json/csv'
+          : mode === 'escape'
+            ? 'RAW_TEXT_OR_JSON_STRING'
+            : 'INPUT_SOURCE.json';
+  const rightLabel =
+    mode === 'query'
+      ? 'QUERY RESULT'
+      : mode === 'schemaGenerate'
+        ? 'GENERATED_SCHEMA'
+        : mode === 'convertCsv'
+          ? 'CONVERT_RESULT'
+          : mode === 'escape'
+            ? 'ESCAPE_RESULT'
+            : 'PRETTY VIEW';
+  const inputLanguage =
+    mode === 'convert'
+      ? 'yaml'
+      : mode === 'convertCsv' || mode === 'escape'
+        ? 'plaintext'
+        : 'json';
+  const outputMonacoLanguage = outputLanguage === 'plaintext' ? 'plaintext' : outputLanguage;
+
   return (
     <>
       <section className="flex flex-col border-r border-[#262626]">
         <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
-          <span>{mode === 'convert' ? 'INPUT_SOURCE.yml/json' : 'INPUT_SOURCE.json'}</span>
+          <span>{leftLabel}</span>
           <span>UTF-8</span>
         </div>
         <div className="flex-1 bg-[#0F0F11]">
           <Editor
             height="100%"
-            language={mode === 'convert' ? 'yaml' : 'json'}
+            language={inputLanguage}
             theme={theme}
             value={input}
             onChange={(value) => onInputChange(value || '')}
@@ -62,7 +90,7 @@ export function EditorWorkspace({
       <section className="flex flex-col">
         <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
           <div className="flex gap-4">
-            <span className="text-blue-400 border-b border-blue-500 pb-1">{mode === 'query' ? 'QUERY RESULT' : 'PRETTY VIEW'}</span>
+            <span className="text-blue-400 border-b border-blue-500 pb-1">{rightLabel}</span>
           </div>
           <div className="flex gap-2 text-[#808080]">
             <button onClick={onExpandAll} className="hover:text-[#E0E0E0] transition-colors">
@@ -77,7 +105,7 @@ export function EditorWorkspace({
         <div className="flex-1 bg-[#0F0F11]">
           <Editor
             height="100%"
-            language={mode === 'convert' ? outputLanguage : 'json'}
+            language={outputMonacoLanguage}
             theme={theme}
             value={output}
             onMount={onOutputEditorMount}

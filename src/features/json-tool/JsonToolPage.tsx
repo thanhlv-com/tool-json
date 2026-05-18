@@ -5,6 +5,7 @@ import { DiffActionBar } from './DiffActionBar';
 import { DiffWorkspace } from './DiffWorkspace';
 import { EditorWorkspace } from './EditorWorkspace';
 import { MODE_PATHS, getModeFromPathname, isValidModePath } from './modeRoutes';
+import { SchemaValidateWorkspace } from './SchemaValidateWorkspace';
 import { TopNavigation } from './TopNavigation';
 import { useJsonToolState } from './useJsonToolState';
 
@@ -22,6 +23,8 @@ export function JsonToolPage() {
   const {
     input,
     setInput,
+    schemaInput,
+    setSchemaInput,
     output,
     outputLanguage,
     convertSourceFormat,
@@ -36,7 +39,9 @@ export function JsonToolPage() {
     errorStatus,
     inputEditorRef,
     outputEditorRef,
+    schemaEditorRef,
     handleEditorValidation,
+    handleSchemaEditorValidation,
     handleFormat,
     handleMinify,
     handleValidate,
@@ -91,6 +96,27 @@ export function JsonToolPage() {
               diffModified={diffModified}
               onDiffOriginalChange={setDiffOriginal}
               onDiffModifiedChange={setDiffModified}
+            />
+          ) : mode === 'schemaValidate' ? (
+            <SchemaValidateWorkspace
+              theme={theme}
+              input={input}
+              schemaInput={schemaInput}
+              output={output}
+              outputLanguage={outputLanguage}
+              onInputChange={setInput}
+              onSchemaInputChange={setSchemaInput}
+              onInputValidate={handleEditorValidation}
+              onSchemaValidate={handleSchemaEditorValidation}
+              onInputEditorMount={(editor) => {
+                inputEditorRef.current = editor;
+              }}
+              onSchemaEditorMount={(editor) => {
+                schemaEditorRef.current = editor;
+              }}
+              onOutputEditorMount={(editor) => {
+                outputEditorRef.current = editor;
+              }}
             />
           ) : (
             <EditorWorkspace

@@ -1,8 +1,16 @@
-export type Mode = 'format' | 'diff' | 'query' | 'convert';
+export type Mode =
+  | 'format'
+  | 'diff'
+  | 'query'
+  | 'convert'
+  | 'schemaGenerate'
+  | 'schemaValidate'
+  | 'convertCsv'
+  | 'escape';
 
 export type ThemeMode = 'vs-dark' | 'light';
 
-export type OutputLanguage = 'json' | 'yaml';
+export type OutputLanguage = 'json' | 'yaml' | 'plaintext';
 
 export type ConvertSourceFormat = 'json' | 'yaml' | null;
 

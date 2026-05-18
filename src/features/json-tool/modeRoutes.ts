@@ -5,6 +5,10 @@ export const MODE_PATHS: Record<Mode, string> = {
   diff: '/diff',
   query: '/query',
   convert: '/yaml',
+  schemaGenerate: '/schema-generate',
+  schemaValidate: '/schema-validate',
+  convertCsv: '/csv',
+  escape: '/escape',
 };
 
 const PATH_TO_MODE: Record<string, Mode> = Object.entries(MODE_PATHS).reduce(

@@ -1,7 +1,11 @@
 import {
   AlignLeft,
   Braces,
+  Link2,
   FileCode2,
+  ShieldCheck,
+  Sparkles,
+  Table2,
   Moon,
   SearchCode,
   SplitSquareHorizontal,
@@ -59,6 +63,38 @@ export function TopNavigation({ mode, onNavigateMode, theme, onToggleTheme }: To
             }`}
           >
             <FileCode2 className="w-3.5 h-3.5" /> YAML
+          </button>
+          <button
+            onClick={() => onNavigateMode('schemaGenerate')}
+            className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+              mode === 'schemaGenerate' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Schema
+          </button>
+          <button
+            onClick={() => onNavigateMode('schemaValidate')}
+            className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+              mode === 'schemaValidate' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" /> Check
+          </button>
+          <button
+            onClick={() => onNavigateMode('convertCsv')}
+            className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+              mode === 'convertCsv' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+            }`}
+          >
+            <Table2 className="w-3.5 h-3.5" /> CSV
+          </button>
+          <button
+            onClick={() => onNavigateMode('escape')}
+            className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+              mode === 'escape' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+            }`}
+          >
+            <Link2 className="w-3.5 h-3.5" /> Escape
           </button>
         </nav>
       </div>
