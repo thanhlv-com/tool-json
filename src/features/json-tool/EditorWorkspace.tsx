@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import YAML from 'yaml';
@@ -6,157 +6,152 @@ import type { Mode, OutputLanguage, ThemeMode } from './types';
 
 type StructuredLanguage = 'json' | 'yaml' | 'plaintext';
 
-type EditorInsight = {
-  status: 'empty' | 'valid' | 'invalid' | 'plaintext';
-  rootType?: string;
-  primaryCountLabel?: string;
-  primaryCountValue?: number;
-  nodeCount?: number;
-  maxDepth?: number;
-  lineCount: number;
-  charCount: number;
-  errorMessage?: string;
+type MonacoEditor = any;
+
+type ArrayHint = {
+  offset: number;
+  path: string;
+  length: number;
 };
 
-function getLineCount(content: string): number {
-  if (!content.length) {
-    return 0;
-  }
+type ArrayHintWidget = {
+  id: string;
+  getId: () => string;
+  getDomNode: () => HTMLElement;
+  getPosition: () => {
+    position: {
+      lineNumber: number;
+      column: number;
+    };
+    preference: number[];
+  };
+};
 
-  return content.split(/\r\n|\r|\n/).length;
+function isIdentifierSegment(segment: string): boolean {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(segment);
 }
 
-function getRootType(value: unknown): string {
-  if (value === null) return 'null';
-  if (Array.isArray(value)) return 'array';
-  return typeof value;
+function appendPath(path: string, segment: string): string {
+  if (isIdentifierSegment(segment)) {
+    return `${path}.${segment}`;
+  }
+  return `${path}[${JSON.stringify(segment)}]`;
 }
 
-function summarizeTree(value: unknown, depth = 1): { nodeCount: number; maxDepth: number } {
-  if (value === null || typeof value !== 'object') {
-    return { nodeCount: 1, maxDepth: depth };
+function getPairKey(pairKey: any): string {
+  const keyValue = pairKey?.toJSON?.() ?? pairKey?.value;
+  if (typeof keyValue === 'string' || typeof keyValue === 'number' || typeof keyValue === 'boolean') {
+    return String(keyValue);
   }
-
-  let nodeCount = 1;
-  let maxDepth = depth;
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const childSummary = summarizeTree(item, depth + 1);
-      nodeCount += childSummary.nodeCount;
-      maxDepth = Math.max(maxDepth, childSummary.maxDepth);
-    }
-    return { nodeCount, maxDepth };
-  }
-
-  for (const childValue of Object.values(value as Record<string, unknown>)) {
-    const childSummary = summarizeTree(childValue, depth + 1);
-    nodeCount += childSummary.nodeCount;
-    maxDepth = Math.max(maxDepth, childSummary.maxDepth);
-  }
-
-  return { nodeCount, maxDepth };
+  return String(pairKey?.value ?? pairKey?.toString?.() ?? 'unknown');
 }
 
-function getPrimaryCount(value: unknown): { label: string; value: number } | null {
-  if (Array.isArray(value)) {
-    return { label: 'items', value: value.length };
-  }
-
-  if (value && typeof value === 'object') {
-    return { label: 'keys', value: Object.keys(value as Record<string, unknown>).length };
-  }
-
-  if (typeof value === 'string') {
-    return { label: 'chars', value: value.length };
-  }
-
-  return null;
-}
-
-function analyzeEditorContent(content: string, language: StructuredLanguage): EditorInsight {
-  const lineCount = getLineCount(content);
-  const charCount = content.length;
-
-  if (!content.trim()) {
-    return { status: 'empty', lineCount, charCount };
-  }
-
-  if (language === 'plaintext') {
-    return { status: 'plaintext', rootType: 'text', lineCount, charCount };
+function collectArrayHints(content: string, language: StructuredLanguage): ArrayHint[] {
+  if (language === 'plaintext' || !content.trim()) {
+    return [];
   }
 
   try {
-    const parsed = language === 'yaml' ? YAML.parse(content) : JSON.parse(content);
-    const rootType = getRootType(parsed);
-    const primaryCount = getPrimaryCount(parsed);
-    const treeSummary = summarizeTree(parsed);
+    const document = YAML.parseDocument(content, {
+      uniqueKeys: false,
+      prettyErrors: false,
+    });
 
-    return {
-      status: 'valid',
-      rootType,
-      primaryCountLabel: primaryCount?.label,
-      primaryCountValue: primaryCount?.value,
-      nodeCount: treeSummary.nodeCount,
-      maxDepth: treeSummary.maxDepth,
-      lineCount,
-      charCount,
+    if (document.errors.length > 0) {
+      return [];
+    }
+
+    const hints: ArrayHint[] = [];
+
+    const visit = (node: any, path: string) => {
+      if (!node) {
+        return;
+      }
+
+      if (YAML.isSeq(node)) {
+        hints.push({
+          offset: Array.isArray(node.range) ? node.range[0] : 0,
+          path,
+          length: node.items.length,
+        });
+
+        node.items.forEach((item: any, index: number) => {
+          visit(item, `${path}[${index}]`);
+        });
+        return;
+      }
+
+      if (!YAML.isMap(node)) {
+        return;
+      }
+
+      node.items.forEach((pair: any) => {
+        const key = getPairKey(pair?.key);
+        visit(pair?.value, appendPath(path, key));
+      });
     };
-  } catch (error: any) {
-    return {
-      status: 'invalid',
-      errorMessage: error.message,
-      lineCount,
-      charCount,
-    };
+
+    visit(document.contents, '$');
+    return hints;
+  } catch {
+    return [];
   }
 }
 
-function InsightBadges({ insight }: { insight: EditorInsight }) {
-  const baseBadgeClassName =
-    'rounded border border-[#2E2E30] bg-[#161618] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#9B9B9D] whitespace-nowrap';
-
-  if (insight.status === 'invalid') {
-    return (
-      <div className="flex items-center gap-2">
-        <span className={`${baseBadgeClassName} border-red-500/35 text-red-300`}>Invalid JSON/YAML</span>
-        <span className="text-[10px] font-mono text-red-300 truncate max-w-[280px]" title={insight.errorMessage}>
-          {insight.errorMessage}
-        </span>
-      </div>
-    );
+function removeArrayHintWidgets(editor: MonacoEditor | null, widgets: ArrayHintWidget[]): void {
+  if (!editor) {
+    return;
   }
 
-  if (insight.status === 'empty') {
-    return (
-      <div className="flex items-center gap-2">
-        <span className={baseBadgeClassName}>Empty</span>
-        <span className={baseBadgeClassName}>Lines: {insight.lineCount}</span>
-        <span className={baseBadgeClassName}>Chars: {insight.charCount}</span>
-      </div>
-    );
+  widgets.forEach((widget) => {
+    editor.removeContentWidget(widget);
+  });
+}
+
+function applyArrayCountWidgets(
+  editor: MonacoEditor | null,
+  previousWidgets: ArrayHintWidget[],
+  language: StructuredLanguage,
+): ArrayHintWidget[] {
+  if (!editor) {
+    return previousWidgets;
   }
 
-  const badges = [
-    `Root: ${insight.rootType}`,
-    insight.primaryCountLabel && insight.primaryCountValue !== undefined
-      ? `${insight.primaryCountLabel}: ${insight.primaryCountValue}`
-      : null,
-    insight.nodeCount !== undefined ? `Nodes: ${insight.nodeCount}` : null,
-    insight.maxDepth !== undefined ? `Depth: ${insight.maxDepth}` : null,
-    `Lines: ${insight.lineCount}`,
-    `Chars: ${insight.charCount}`,
-  ].filter(Boolean) as string[];
+  const model = editor.getModel();
+  if (!model) {
+    return previousWidgets;
+  }
 
-  return (
-    <div className="flex items-center gap-2">
-      {badges.map((badge) => (
-        <span key={badge} className={baseBadgeClassName}>
-          {badge}
-        </span>
-      ))}
-    </div>
-  );
+  removeArrayHintWidgets(editor, previousWidgets);
+
+  const hints = collectArrayHints(model.getValue(), language);
+  const widgets: ArrayHintWidget[] = hints.map((hint, index) => {
+    const lineNumber = model.getPositionAt(Math.max(0, hint.offset)).lineNumber;
+    const maxColumn = model.getLineMaxColumn(lineNumber);
+    const id = `array-hint-${language}-${lineNumber}-${index}`;
+    const domNode = document.createElement('span');
+    domNode.className = 'json-array-count-widget';
+    domNode.textContent = ` ${hint.path} items: ${hint.length}`;
+
+    const widget: ArrayHintWidget = {
+      id,
+      getId: () => id,
+      getDomNode: () => domNode,
+      getPosition: () => ({
+        position: {
+          lineNumber,
+          column: maxColumn,
+        },
+        // EXACT = 0 in Monaco ContentWidgetPositionPreference
+        preference: [0],
+      }),
+    };
+
+    editor.addContentWidget(widget);
+    return widget;
+  });
+
+  return widgets;
 }
 
 type EditorWorkspaceProps = {
@@ -188,6 +183,11 @@ export function EditorWorkspace({
   onInputEditorMount,
   onOutputEditorMount,
 }: EditorWorkspaceProps) {
+  const inputEditorRef = useRef<MonacoEditor | null>(null);
+  const outputEditorRef = useRef<MonacoEditor | null>(null);
+  const inputWidgetsRef = useRef<ArrayHintWidget[]>([]);
+  const outputWidgetsRef = useRef<ArrayHintWidget[]>([]);
+
   const leftLabel =
     mode === 'convert'
       ? 'INPUT_SOURCE.yml/json'
@@ -208,7 +208,7 @@ export function EditorWorkspace({
           : mode === 'escape'
             ? 'ESCAPE_RESULT'
             : 'PRETTY VIEW';
-  const inputLanguage =
+  const inputLanguage: StructuredLanguage =
     mode === 'convert'
       ? 'yaml'
       : mode === 'convertCsv'
@@ -216,26 +216,48 @@ export function EditorWorkspace({
           ? 'json'
           : 'plaintext'
         : mode === 'escape'
-        ? 'plaintext'
-        : 'json';
-  const outputMonacoLanguage = outputLanguage === 'plaintext' ? 'plaintext' : outputLanguage;
-  const inputInsight = useMemo(
-    () => analyzeEditorContent(input, inputLanguage === 'plaintext' ? 'plaintext' : inputLanguage),
-    [input, inputLanguage],
+          ? 'plaintext'
+          : 'json';
+  const outputMonacoLanguage: StructuredLanguage = outputLanguage === 'plaintext' ? 'plaintext' : outputLanguage;
+
+  const refreshInputDecorations = useCallback(() => {
+    inputWidgetsRef.current = applyArrayCountWidgets(
+      inputEditorRef.current,
+      inputWidgetsRef.current,
+      inputLanguage,
+    );
+  }, [inputLanguage]);
+
+  const refreshOutputDecorations = useCallback(() => {
+    outputWidgetsRef.current = applyArrayCountWidgets(
+      outputEditorRef.current,
+      outputWidgetsRef.current,
+      outputMonacoLanguage,
+    );
+  }, [outputMonacoLanguage]);
+
+  useEffect(() => {
+    refreshInputDecorations();
+  }, [input, refreshInputDecorations]);
+
+  useEffect(() => {
+    refreshOutputDecorations();
+  }, [output, refreshOutputDecorations]);
+
+  useEffect(
+    () => () => {
+      removeArrayHintWidgets(inputEditorRef.current, inputWidgetsRef.current);
+      removeArrayHintWidgets(outputEditorRef.current, outputWidgetsRef.current);
+    },
+    [],
   );
-  const outputInsight = useMemo(() => analyzeEditorContent(output, outputMonacoLanguage), [output, outputMonacoLanguage]);
 
   return (
     <>
       <section className="flex flex-col border-r border-[#262626]">
-        <div className="px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
-          <div className="flex items-center justify-between">
-            <span>{leftLabel}</span>
-            <span>UTF-8</span>
-          </div>
-          <div className="mt-2 overflow-x-auto pb-1">
-            <InsightBadges insight={inputInsight} />
-          </div>
+        <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+          <span>{leftLabel}</span>
+          <span>UTF-8</span>
         </div>
         <div className="flex-1 bg-[#0F0F11]">
           <Editor
@@ -244,7 +266,13 @@ export function EditorWorkspace({
             theme={theme}
             value={input}
             onChange={(value) => onInputChange(value || '')}
-            onMount={onInputEditorMount}
+            onMount={(editor) => {
+              inputEditorRef.current = editor;
+              onInputEditorMount(editor);
+              refreshInputDecorations();
+              setTimeout(refreshInputDecorations, 0);
+              setTimeout(refreshInputDecorations, 80);
+            }}
             onValidate={onInputValidate}
             options={{
               minimap: { enabled: false },
@@ -261,22 +289,17 @@ export function EditorWorkspace({
       </section>
 
       <section className="flex flex-col">
-        <div className="px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+        <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
           <div className="flex gap-4">
             <span className="text-blue-400 border-b border-blue-500 pb-1">{rightLabel}</span>
           </div>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <div className="overflow-x-auto pb-1">
-              <InsightBadges insight={outputInsight} />
-            </div>
-            <div className="flex gap-2 text-[#808080] shrink-0">
-              <button onClick={onExpandAll} className="hover:text-[#E0E0E0] transition-colors">
-                <ChevronDown className="h-3 w-3" />
-              </button>
-              <button onClick={onCollapseAll} className="hover:text-[#E0E0E0] transition-colors">
-                <ChevronRight className="h-3 w-3" />
-              </button>
-            </div>
+          <div className="flex gap-2 text-[#808080]">
+            <button onClick={onExpandAll} className="hover:text-[#E0E0E0] transition-colors">
+              <ChevronDown className="h-3 w-3" />
+            </button>
+            <button onClick={onCollapseAll} className="hover:text-[#E0E0E0] transition-colors">
+              <ChevronRight className="h-3 w-3" />
+            </button>
           </div>
         </div>
 
@@ -286,7 +309,13 @@ export function EditorWorkspace({
             language={outputMonacoLanguage}
             theme={theme}
             value={output}
-            onMount={onOutputEditorMount}
+            onMount={(editor) => {
+              outputEditorRef.current = editor;
+              onOutputEditorMount(editor);
+              refreshOutputDecorations();
+              setTimeout(refreshOutputDecorations, 0);
+              setTimeout(refreshOutputDecorations, 80);
+            }}
             options={{
               readOnly: true,
               minimap: { enabled: false },

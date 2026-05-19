@@ -134,3 +134,12 @@
     @apply font-sans;
     }
 }
+
+.json-array-count-widget {
+  color: #7d8590;
+  font-size: 11px;
+  font-style: italic;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0.9;
+}
