@@ -17,8 +17,10 @@ import {
   convertCsvToJson,
   convertJsonToCsv,
   escapeOrUnescapeJsonString,
+  generateJsonDiffReport,
   generateJsonPatchOperations,
   generateJsonSchemaFromSample,
+  type JsonDiffReport,
   validateJsonBySchema,
 } from './utils';
 
@@ -168,6 +170,8 @@ export function useJsonToolState(mode: Mode) {
   const [convertSourceFormat, setConvertSourceFormat] = useState<ConvertSourceFormat>(initialState.convertSourceFormat);
   const [diffOriginal, setDiffOriginal] = useState<string>(initialState.diffOriginal);
   const [diffModified, setDiffModified] = useState<string>(initialState.diffModified);
+  const [diffReport, setDiffReport] = useState<JsonDiffReport | null>(null);
+  const [diffParseError, setDiffParseError] = useState<string | null>(null);
   const [jsonPath, setJsonPath] = useState<string>(initialState.jsonPath);
   const [theme, setTheme] = useState<ThemeMode>(initialState.theme);
   const [errorStatus, setErrorStatus] = useState<ErrorStatus>(null);
@@ -485,6 +489,37 @@ export function useJsonToolState(mode: Mode) {
   }, [mode, patchOperationsInput]);
 
   useEffect(() => {
+    if (!diffOriginal.trim() && !diffModified.trim()) {
+      setDiffReport(null);
+      setDiffParseError(null);
+      return;
+    }
+
+    try {
+      let originalParsed: unknown;
+      let modifiedParsed: unknown;
+
+      try {
+        originalParsed = JSON.parse(diffOriginal);
+      } catch (error: any) {
+        throw new Error(`Original JSON invalid: ${error.message}`);
+      }
+
+      try {
+        modifiedParsed = JSON.parse(diffModified);
+      } catch (error: any) {
+        throw new Error(`Modified JSON invalid: ${error.message}`);
+      }
+
+      setDiffReport(generateJsonDiffReport(originalParsed, modifiedParsed));
+      setDiffParseError(null);
+    } catch (error: any) {
+      setDiffReport(null);
+      setDiffParseError(error.message);
+    }
+  }, [diffModified, diffOriginal]);
+
+  useEffect(() => {
     if (mode !== 'diff' && mode !== 'patch') {
       processJson();
     }
@@ -711,6 +746,8 @@ export function useJsonToolState(mode: Mode) {
     setDiffOriginal,
     diffModified,
     setDiffModified,
+    diffReport,
+    diffParseError,
     jsonPath,
     setJsonPath,
     theme,

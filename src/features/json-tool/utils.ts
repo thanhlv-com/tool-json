@@ -362,6 +362,268 @@ export function escapeOrUnescapeJsonString(input: string): {
   }
 }
 
+export type JsonDiffDetail = {
+  id: string;
+  op: Operation['op'];
+  path: string;
+  pathLabel: string;
+  message: string;
+  originalValue?: unknown;
+  modifiedValue?: unknown;
+  originalType?: string;
+  modifiedType?: string;
+};
+
+export type JsonDiffReport = {
+  equal: boolean;
+  operationCount: number;
+  operations: Operation[];
+  details: JsonDiffDetail[];
+  summary: {
+    added: number;
+    removed: number;
+    changed: number;
+  };
+};
+
+function escapeJsonPointerToken(token: string): string {
+  return token.replace(/~/g, '~0').replace(/\//g, '~1');
+}
+
+function unescapeJsonPointerToken(token: string): string {
+  return token.replace(/~1/g, '/').replace(/~0/g, '~');
+}
+
+function parseJsonPointer(path: string): string[] {
+  if (!path) {
+    return [];
+  }
+
+  return path
+    .split('/')
+    .slice(1)
+    .map((token) => unescapeJsonPointerToken(token));
+}
+
+function toJsonPointer(segments: string[]): string {
+  if (segments.length === 0) {
+    return '';
+  }
+
+  return `/${segments.map((segment) => escapeJsonPointerToken(segment)).join('/')}`;
+}
+
+function isArrayIndexToken(token: string | undefined): boolean {
+  return Boolean(token) && /^\d+$/.test(token);
+}
+
+function isObjectLike(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getValueAtPointer(source: unknown, path: string): unknown {
+  const segments = parseJsonPointer(path);
+  let current: unknown = source;
+
+  for (const segment of segments) {
+    if (current === null || current === undefined) {
+      return undefined;
+    }
+
+    if (Array.isArray(current)) {
+      if (!isArrayIndexToken(segment)) {
+        return undefined;
+      }
+      current = current[Number(segment)];
+      continue;
+    }
+
+    if (typeof current !== 'object') {
+      return undefined;
+    }
+
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current;
+}
+
+function getValueType(value: unknown): string {
+  if (value === undefined) return 'missing';
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function formatDiffPath(path: string): string {
+  const segments = parseJsonPointer(path);
+  if (segments.length === 0) {
+    return '$';
+  }
+
+  let result = '$';
+  const identifierPattern = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+  for (const segment of segments) {
+    if (segment === '-') {
+      result += '[last]';
+      continue;
+    }
+
+    if (isArrayIndexToken(segment)) {
+      result += `[${segment}]`;
+      continue;
+    }
+
+    if (identifierPattern.test(segment)) {
+      result += `.${segment}`;
+      continue;
+    }
+
+    result += `[${JSON.stringify(segment)}]`;
+  }
+
+  return result;
+}
+
+function createPreviewValue(value: unknown): string {
+  if (value === undefined) {
+    return '(missing)';
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) {
+      return String(value);
+    }
+    return serialized.length > 180 ? `${serialized.slice(0, 180)}...` : serialized;
+  } catch {
+    return String(value);
+  }
+}
+
+function buildDetailMessage(
+  operation: Operation,
+  path: string,
+  originalParent: unknown,
+  modifiedParent: unknown,
+  originalType: string,
+  modifiedType: string,
+): string {
+  const segments = parseJsonPointer(path);
+  const lastToken = segments[segments.length - 1];
+  const isArrayScope = Array.isArray(originalParent) || Array.isArray(modifiedParent);
+
+  if (operation.op === 'add') {
+    if (isArrayScope) {
+      if (lastToken === '-') {
+        return 'Appended new item to array';
+      }
+      return `Array has a new item at index ${lastToken ?? '?'}`;
+    }
+    return `Added value at ${formatDiffPath(path)}`;
+  }
+
+  if (operation.op === 'remove') {
+    if (isArrayScope) {
+      return `Array item missing in modified at index ${lastToken ?? '?'}`;
+    }
+    return `Removed value at ${formatDiffPath(path)}`;
+  }
+
+  if (operation.op === 'replace') {
+    if (isArrayScope) {
+      return originalType !== modifiedType
+        ? `Array item type changed at index ${lastToken ?? '?'} (${originalType} -> ${modifiedType})`
+        : `Array item content changed at index ${lastToken ?? '?'}`;
+    }
+
+    return originalType !== modifiedType
+      ? `Value type changed at ${formatDiffPath(path)} (${originalType} -> ${modifiedType})`
+      : `Value changed at ${formatDiffPath(path)}`;
+  }
+
+  return `${operation.op.toUpperCase()} operation at ${formatDiffPath(path)}`;
+}
+
+function createDetail(
+  operation: Operation,
+  index: number,
+  original: unknown,
+  modified: unknown,
+): JsonDiffDetail {
+  const path = operation.path ?? '';
+  const pathLabel = formatDiffPath(path);
+  const segments = parseJsonPointer(path);
+  const parentPath = toJsonPointer(segments.slice(0, -1));
+  const originalParent = getValueAtPointer(original, parentPath);
+  const modifiedParent = getValueAtPointer(modified, parentPath);
+  const originalValue = getValueAtPointer(original, path);
+  const modifiedValue =
+    operation.op === 'add' && 'value' in operation ? operation.value : getValueAtPointer(modified, path);
+  const originalType = getValueType(originalValue);
+  const modifiedType = getValueType(modifiedValue);
+  const message = buildDetailMessage(operation, path, originalParent, modifiedParent, originalType, modifiedType);
+
+  let detailOriginalValue: unknown;
+  let detailModifiedValue: unknown;
+
+  if (operation.op === 'add') {
+    detailModifiedValue = modifiedValue;
+  } else if (operation.op === 'remove') {
+    detailOriginalValue = originalValue;
+  } else {
+    detailOriginalValue = originalValue;
+    detailModifiedValue = modifiedValue;
+  }
+
+  return {
+    id: `${index}-${operation.op}-${path}`,
+    op: operation.op,
+    path,
+    pathLabel,
+    message: `${message}. Before: ${createPreviewValue(detailOriginalValue)} | After: ${createPreviewValue(detailModifiedValue)}`,
+    originalValue: detailOriginalValue,
+    modifiedValue: detailModifiedValue,
+    originalType,
+    modifiedType,
+  };
+}
+
+export function generateJsonDiffReport(original: unknown, modified: unknown): JsonDiffReport {
+  let operations: Operation[] = [];
+
+  if (isObjectLike(original) && isObjectLike(modified)) {
+    operations = compare(original as object, modified as object);
+  } else if (JSON.stringify(original) !== JSON.stringify(modified)) {
+    operations = [{ op: 'replace', path: '', value: modified } as Operation];
+  }
+
+  const summary = operations.reduce(
+    (result, operation) => {
+      if (operation.op === 'add') {
+        result.added += 1;
+      } else if (operation.op === 'remove') {
+        result.removed += 1;
+      } else {
+        result.changed += 1;
+      }
+      return result;
+    },
+    { added: 0, removed: 0, changed: 0 },
+  );
+
+  const details = operations.map((operation, index) => createDetail(operation, index, original, modified));
+
+  return {
+    equal: operations.length === 0,
+    operationCount: operations.length,
+    operations,
+    details,
+    summary,
+  };
+}
+
 export function generateJsonPatchOperations(original: unknown, modified: unknown): Operation[] {
   return compare(original as object, modified as object);
 }

@@ -35,6 +35,8 @@ export function JsonToolPage() {
     setDiffOriginal,
     diffModified,
     setDiffModified,
+    diffReport,
+    diffParseError,
     jsonPath,
     setJsonPath,
     syncInputAcrossModes,
@@ -97,7 +99,7 @@ export function JsonToolPage() {
 
       <div className="flex-1 flex flex-col min-h-0">
         {mode === 'diff' ? (
-          <DiffActionBar />
+          <DiffActionBar diffReport={diffReport} diffParseError={diffParseError} />
         ) : mode === 'patch' ? (
           <PatchActionBar
             output={output}
@@ -143,6 +145,8 @@ export function JsonToolPage() {
               theme={theme}
               diffOriginal={diffOriginal}
               diffModified={diffModified}
+              diffReport={diffReport}
+              diffParseError={diffParseError}
               onDiffOriginalChange={setDiffOriginal}
               onDiffModifiedChange={setDiffModified}
             />
