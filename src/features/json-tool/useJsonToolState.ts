@@ -21,9 +21,24 @@ const DEFAULT_JSON_INPUT =
   '{\n  "tool": "JSON Dev Tool",\n  "version": 1.0,\n  "features": [\n    "Format",\n    "Validate",\n    "Diff",\n    "Query",\n    "YAML"\n  ],\n  "is_awesome": true\n}';
 const DEFAULT_SCHEMA_INPUT =
   '{\n  "type": "object",\n  "properties": {\n    "tool": { "type": "string" },\n    "version": { "type": "number" }\n  },\n  "required": ["tool", "version"],\n  "additionalProperties": true\n}';
+type InputMode = Exclude<Mode, 'diff'>;
+
+const INPUT_MODES: InputMode[] = ['format', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape'];
+
+function createDefaultInputByMode(value: string): Record<InputMode, string> {
+  return INPUT_MODES.reduce(
+    (result, inputMode) => {
+      result[inputMode] = value;
+      return result;
+    },
+    {} as Record<InputMode, string>,
+  );
+}
 
 export function useJsonToolState(mode: Mode) {
-  const [input, setInput] = useState<string>(DEFAULT_JSON_INPUT);
+  const [sharedInput, setSharedInput] = useState<string>(DEFAULT_JSON_INPUT);
+  const [inputByMode, setInputByMode] = useState<Record<InputMode, string>>(() => createDefaultInputByMode(DEFAULT_JSON_INPUT));
+  const [syncInputAcrossModes, setSyncInputAcrossModesState] = useState<boolean>(true);
   const [schemaInput, setSchemaInput] = useState<string>(DEFAULT_SCHEMA_INPUT);
   const [output, setOutput] = useState<string>('');
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>('json');
@@ -39,6 +54,49 @@ export function useJsonToolState(mode: Mode) {
   const inputEditorRef = useRef<any>(null);
   const outputEditorRef = useRef<any>(null);
   const schemaEditorRef = useRef<any>(null);
+  const inputMode: InputMode = mode === 'diff' ? 'format' : mode;
+  const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
+
+  const setInput = useCallback(
+    (value: string) => {
+      if (syncInputAcrossModes) {
+        setSharedInput(value);
+      } else {
+        setInputByMode((previous) => ({
+          ...previous,
+          [inputMode]: value,
+        }));
+      }
+    },
+    [inputMode, syncInputAcrossModes],
+  );
+
+  const setSyncInputAcrossModes = useCallback(
+    (nextValue: boolean) => {
+      if (nextValue) {
+        setSharedInput(inputByMode[inputMode]);
+      } else {
+        setInputByMode(createDefaultInputByMode(sharedInput));
+      }
+      setSyncInputAcrossModesState(nextValue);
+    },
+    [inputByMode, inputMode, sharedInput],
+  );
+
+  useEffect(() => {
+    if (!syncInputAcrossModes) {
+      return;
+    }
+
+    setInputByMode((previous) => {
+      const allModesAlreadySynced = INPUT_MODES.every((inputModeKey) => previous[inputModeKey] === sharedInput);
+      if (allModesAlreadySynced) {
+        return previous;
+      }
+
+      return createDefaultInputByMode(sharedInput);
+    });
+  }, [sharedInput, syncInputAcrossModes]);
 
   const processJson = useCallback(
     (action: ProcessAction = 'format', customInput = input) => {
@@ -306,6 +364,8 @@ export function useJsonToolState(mode: Mode) {
   return {
     input,
     setInput,
+    syncInputAcrossModes,
+    setSyncInputAcrossModes,
     schemaInput,
     setSchemaInput,
     output,

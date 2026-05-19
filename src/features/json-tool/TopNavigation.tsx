@@ -16,11 +16,20 @@ import type { Mode, ThemeMode } from './types';
 type TopNavigationProps = {
   mode: Mode;
   onNavigateMode: (mode: Mode) => void;
+  syncInputAcrossModes: boolean;
+  onSyncInputAcrossModesChange: (value: boolean) => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
 };
 
-export function TopNavigation({ mode, onNavigateMode, theme, onToggleTheme }: TopNavigationProps) {
+export function TopNavigation({
+  mode,
+  onNavigateMode,
+  syncInputAcrossModes,
+  onSyncInputAcrossModesChange,
+  theme,
+  onToggleTheme,
+}: TopNavigationProps) {
   return (
     <header className="flex items-center justify-between px-6 py-3 border-b border-[#262626] bg-[#161618] shrink-0">
       <div className="flex items-center gap-6">
@@ -100,6 +109,16 @@ export function TopNavigation({ mode, onNavigateMode, theme, onToggleTheme }: To
       </div>
 
       <div className="flex items-center gap-4">
+        <label className="hidden sm:flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[#9AA0A6]">
+          <input
+            type="checkbox"
+            checked={syncInputAcrossModes}
+            onChange={(event) => onSyncInputAcrossModesChange(event.target.checked)}
+            className="h-3.5 w-3.5 accent-blue-500"
+          />
+          Sync Input
+        </label>
+        <div className="h-4 w-[1px] bg-[#333] hidden sm:block"></div>
         <div className="hidden sm:flex items-center gap-2 text-[10px] text-[#808080] font-mono">
           <span className="px-1.5 py-0.5 border border-[#333] rounded">⌘/Ctrl + F</span> <span className="mr-2">Format</span>
           <span className="px-1.5 py-0.5 border border-[#333] rounded">⌘/Ctrl + ↵</span> <span>Run</span>

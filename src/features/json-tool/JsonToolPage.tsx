@@ -34,6 +34,8 @@ export function JsonToolPage() {
     setDiffModified,
     jsonPath,
     setJsonPath,
+    syncInputAcrossModes,
+    setSyncInputAcrossModes,
     theme,
     setTheme,
     errorStatus,
@@ -64,6 +66,8 @@ export function JsonToolPage() {
       <TopNavigation
         mode={mode}
         onNavigateMode={(nextMode) => navigate(MODE_PATHS[nextMode])}
+        syncInputAcrossModes={syncInputAcrossModes}
+        onSyncInputAcrossModesChange={setSyncInputAcrossModes}
         theme={theme}
         onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'vs-dark' ? 'light' : 'vs-dark'))}
       />
