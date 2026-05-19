@@ -14,7 +14,7 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 
 - Trạng thái: Done.
 - Đã triển khai: import input qua nút `Open` (mode thường) và `Open Base/Target/Patch` (patch mode).
-- Hành vi hiện tại: download output theo định dạng phù hợp (`.json`, `.yaml`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
+- Hành vi hiện tại: download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
 
 ### 3) UX lỗi rõ ràng hơn
 
@@ -36,6 +36,24 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 
 - Trạng thái: Done.
 - Đã triển khai: chọn draft (`draft-07`, `2019-09`, `2020-12`) + nhập custom keywords cho AJV.
+
+### 7) Convert mode mở rộng và chuẩn hóa route
+
+- Trạng thái: Done.
+- Đã triển khai: mode `convert` canonical ở `/convert`, giữ backward compatibility cho `/yaml` bằng redirect.
+- Hành vi hiện tại: convert chỉ nhận JSON hợp lệ và target gồm `YAML`, `XML`, `Properties` (không còn target JSON).
+
+### 8) Diff phân tích chi tiết
+
+- Trạng thái: Done.
+- Đã triển khai: thêm `Diff Details` panel với message theo path, summary `+/-/~`, và nút `Format` riêng cho diff.
+- Hành vi hiện tại: hỗ trợ phân tích rõ case thiếu item trong array, đổi type, và thay đổi giá trị.
+
+### 9) Inline type hints trong Monaco editor
+
+- Trạng thái: Done.
+- Đã triển khai: hiển thị hints ngay trong editor bằng content widgets, gồm path + kiểu dữ liệu + metadata (`items`, `keys`).
+- Hành vi hiện tại: người dùng có thể bật/tắt qua cấu hình `Type Hints` và giá trị được persist trong `localStorage`.
 
 ## 2. Next Priorities (chưa triển khai)
 

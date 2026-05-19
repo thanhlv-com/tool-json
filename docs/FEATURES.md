@@ -6,25 +6,29 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 
 - App dùng `BrowserRouter` + route wildcard (`*`) để render `JsonToolPage`.
 - Map mode theo path nằm trong `modeRoutes.ts`.
+- Path cũ `/yaml` vẫn được map sang mode `convert`, sau đó được canonical redirect sang `/convert`.
 - Nếu truy cập path không hợp lệ, app redirect về mode cuối trong `localStorage` (fallback `/editor`).
 - State và xử lý nghiệp vụ tập trung ở `useJsonToolState(mode)`.
-- `TopNavigation`: chuyển mode, bật/tắt sync input, đổi theme.
+- `TopNavigation`: chuyển mode, bật/tắt `Sync Input`, bật/tắt `Type Hints`, đổi theme.
 - `ActionBar`/`DiffActionBar`/`PatchActionBar`: nhóm thao tác theo mode.
 - `EditorWorkspace`/`DiffWorkspace`/`SchemaValidateWorkspace`/`PatchWorkspace`: vùng editor.
 
 ## 2. Mode và route
 
-| Mode | Route | Chức năng chính |
+| Mode | Route canonical | Chức năng chính |
 | --- | --- | --- |
 | `format` | `/editor` | Format, minify, validate JSON |
-| `diff` | `/diff` | So sánh JSON gốc và JSON sửa |
+| `diff` | `/diff` | So sánh JSON gốc và JSON sửa + panel diff details |
 | `query` | `/query` | JSONPath query |
-| `convert` | `/yaml` | Chuyển JSON <-> YAML |
+| `convert` | `/convert` | Convert JSON -> YAML/XML/Properties |
 | `schemaGenerate` | `/schema-generate` | Sinh JSON Schema từ sample JSON |
 | `schemaValidate` | `/schema-validate` | Validate JSON data theo schema |
 | `convertCsv` | `/csv` | Chuyển JSON <-> CSV |
 | `escape` | `/escape` | Escape/unescape chuỗi JSON |
 | `patch` | `/patch` | Generate và apply JSON Patch |
+
+Legacy path:
+- `/yaml` -> mode `convert` -> redirect sang `/convert`.
 
 ## 3. State, persistence, và input
 
@@ -34,7 +38,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - `diff` dùng cặp input độc lập: `diffOriginal` và `diffModified`.
 - `patch` dùng 3 input độc lập: `patchBaseInput`, `patchTargetInput`, `patchOperationsInput`.
 - Theme có 2 giá trị: `vs-dark` và `light`.
-- Toàn bộ state chính được persist vào `localStorage` key `json-dev-tool.state.v2`.
+- Toàn bộ state chính được persist vào `localStorage` key `json-dev-tool.state.v2`, gồm cả `showArrayHints` và `lastMode`.
 
 ## 4. Chi tiết từng mode
 
@@ -43,14 +47,17 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - Parse JSON và hỗ trợ `Format`, `Minify`, `Validate`.
 - `Format`: pretty JSON (`JSON.stringify(..., null, 2)`).
 - `Minify`: JSON một dòng.
-- `Validate`: chỉ validate + trả output pretty JSON.
+- `Validate`: validate + trả output pretty JSON.
 - Parse lỗi hiển thị `Parse Error: ...`.
 
 ### 4.2 `/diff`
 
 - Dùng Monaco `DiffEditor`.
 - `originalEditable: true`, cả hai phía có thể chỉnh.
-- Không có action format/minify/validate ở action bar.
+- Có nút `Format` riêng cho diff để format lại original/modified JSON.
+- Có status summary (`Ops`, `+added`, `-removed`, `~changed`).
+- Có panel `Diff Details` hiển thị chi tiết từng operation theo path (ví dụ missing array item, type changed, value changed), kèm preview before/after.
+- Khi input không hợp lệ, hiển thị parse lỗi theo từng phía (`Original JSON invalid...`, `Modified JSON invalid...`).
 
 ### 4.3 `/query`
 
@@ -59,14 +66,17 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - Output luôn là mảng kết quả query (JSON pretty).
 - Lỗi JSONPath hiển thị `Invalid JSONPath: ...`.
 
-### 4.4 `/yaml` (convert)
+### 4.4 `/convert`
 
-- Tự nhận diện nguồn:
-- Parse được JSON trước thì coi là JSON -> YAML.
-- Nếu JSON parse fail thì parse YAML -> JSON.
-- Khi nguồn là JSON, output là YAML (có cả nhánh minify flow-style).
-- Khi nguồn là YAML, output là JSON (pretty hoặc minified).
-- `outputLanguage` đổi giữa `yaml` và `json`.
+- Input bắt buộc là JSON hợp lệ.
+- Nếu JSON không hợp lệ, báo lỗi rõ ràng: `Convert mode only accepts valid JSON input: ...`.
+- Target hiện có:
+- `YAML`
+- `XML`
+- `Properties`
+- Không còn target `JSON`.
+- `Minify` có tác dụng khi target là YAML/XML (compact output).
+- `Open` chỉ chấp nhận file `.json` ở mode này.
 
 ### 4.5 `/schema-generate`
 
@@ -112,13 +122,25 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - `Apply Patch`: áp operations vào `BASE_JSON`, trả `PATCH_RESULT`.
 - `PATCH_OPERATIONS` có thể chỉnh tay trước khi apply.
 
-## 5. ActionBar, import/export, shortcut
+## 5. Inline Type Hints trong editor
+
+- Hints hiển thị trực tiếp bên trong Monaco editor bằng `contentWidget` (không nằm ở toolbar/bar).
+- Hiển thị cho cả input và output editor (trừ mode diff/patch/schema-validate workspace chuyên biệt).
+- Hints bao gồm:
+- JSON path (ví dụ `$.items[0].name`)
+- type (`object`, `array<...>`, `string`, `integer`, `number`, `boolean`, `null`)
+- detail thêm (`items: n` cho array, `keys: n` cho object)
+- Có thể bật/tắt qua checkbox `Type Hints` ở top navigation.
+
+## 6. ActionBar, import/export, shortcut
 
 - Nút chính theo mode: `Validate`, `Generate`, `Validate Schema`, `Convert`, `Escape/Unescape`, `Generate Patch`, `Apply Patch`.
 - Nút `Open` import file input có ở action bar mode thường; patch có `Open Base`, `Open Target`, `Open Patch`.
 - `Copy` và `Down` thao tác trên output hiện tại.
 - Tên file download theo mode/output:
 - `result.yaml` cho YAML output.
+- `result.xml` cho XML output.
+- `result.properties` cho Properties output.
 - `result.csv` hoặc `result.tsv` cho CSV output.
 - `result.txt` cho plaintext output ở escape mode.
 - `patch-result.json` cho patch mode.
@@ -128,7 +150,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - `Ctrl/Cmd + Shift + F`: format.
 - `Ctrl/Cmd + Shift + M`: minify.
 
-## 6. Giới hạn hiện tại
+## 7. Giới hạn hiện tại
 
 - Chưa có test tự động (unit/integration/e2e).
 - Chưa có drag-and-drop file hoặc import nhiều file cùng lúc.

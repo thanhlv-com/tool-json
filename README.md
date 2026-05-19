@@ -1,6 +1,6 @@
 # JSON Dev Tool
 
-Ứng dụng Vite + React + TypeScript để xử lý JSON ngay trên trình duyệt: format/validate, diff, JSONPath query, JSON <-> YAML, JSON <-> CSV, escape/unescape, và JSON Patch (RFC 6902).
+Ứng dụng Vite + React + TypeScript để xử lý dữ liệu ngay trên trình duyệt: JSON format/validate, diff chi tiết, JSONPath query, JSON -> YAML/XML/Properties, JSON <-> CSV, escape/unescape, và JSON Patch (RFC 6902).
 
 ## Chạy local
 
@@ -24,20 +24,24 @@ npm run preview
 ## Danh sách mode hiện có
 
 - `/editor`: JSON editor (format, minify, validate).
-- `/diff`: so sánh hai JSON bằng Monaco DiffEditor.
+- `/diff`: so sánh hai JSON bằng Monaco DiffEditor, có `Format` cho cả 2 pane và panel diff chi tiết theo path.
 - `/query`: chạy JSONPath query trên input JSON.
-- `/yaml`: chuyển đổi JSON <-> YAML.
+- `/convert`: convert từ JSON sang `YAML`, `XML`, hoặc `Properties` (input bắt buộc là JSON hợp lệ).
 - `/schema-generate`: tạo JSON Schema từ sample JSON.
 - `/schema-validate`: validate JSON data theo JSON Schema (chọn draft + custom keywords).
 - `/csv`: chuyển đổi JSON <-> CSV (delimiter/header/quote/escape options).
 - `/escape`: escape/unescape JSON string.
 - `/patch`: generate/apply JSON Patch operations.
 
+Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, sau đó tự canonical redirect về `/convert`.
+
 ## Khả năng hiện có nổi bật
 
-- Persist state vào `localStorage` (`json-dev-tool.state.v2`): reload vẫn giữ input/output/options/theme và mode cuối.
+- Type hints hiển thị trực tiếp bên trong editor (Monaco content widget) cho cả object/array/scalar, kèm path và thông tin số lượng (`items`, `keys`), có toggle `Type Hints`.
+- Diff report có summary (`+/-/~`) và danh sách detail theo từng operation/path để phân tích nhanh case thiếu item hoặc đổi kiểu dữ liệu.
+- Persist state vào `localStorage` (`json-dev-tool.state.v2`): reload vẫn giữ input/output/options/theme, `Type Hints`, và mode cuối.
 - Hỗ trợ import input từ file qua nút `Open` theo từng mode.
-- Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
+- Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
 
 ## Cấu trúc chính
 
