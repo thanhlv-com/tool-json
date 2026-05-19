@@ -43,4 +43,4 @@ If you add tests, place them near feature code (for example, `src/features/json-
 
 ## Security & Configuration Tips
 - Keep secrets in local env files; never commit real keys.
-- Use `.env.example` as the template (`GEMINI_API_KEY`, `APP_URL`).
+- Use `.env.example` as the template for any local variables you need.

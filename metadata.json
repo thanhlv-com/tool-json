@@ -2,5 +2,5 @@
   "name": "JSON Dev Tool",
   "description": "A powerful developer tool for formatting, validating, diffing, querying, and converting JSON natively in the browser without server upload.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
