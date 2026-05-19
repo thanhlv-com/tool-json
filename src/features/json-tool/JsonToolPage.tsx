@@ -38,6 +38,7 @@ export function JsonToolPage() {
     setSyncInputAcrossModes,
     theme,
     setTheme,
+    csvInputLooksLikeJson,
     errorStatus,
     inputEditorRef,
     outputEditorRef,
@@ -129,6 +130,7 @@ export function JsonToolPage() {
               input={input}
               output={output}
               outputLanguage={outputLanguage}
+              csvInputLooksLikeJson={csvInputLooksLikeJson}
               onInputChange={setInput}
               onInputValidate={handleEditorValidation}
               onExpandAll={handleExpandAll}

@@ -35,6 +35,11 @@ function createDefaultInputByMode(value: string): Record<InputMode, string> {
   );
 }
 
+function isLikelyJsonInput(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.startsWith('{') || trimmed.startsWith('[');
+}
+
 export function useJsonToolState(mode: Mode) {
   const [sharedInput, setSharedInput] = useState<string>(DEFAULT_JSON_INPUT);
   const [inputByMode, setInputByMode] = useState<Record<InputMode, string>>(() => createDefaultInputByMode(DEFAULT_JSON_INPUT));
@@ -56,6 +61,7 @@ export function useJsonToolState(mode: Mode) {
   const schemaEditorRef = useRef<any>(null);
   const inputMode: InputMode = mode === 'diff' ? 'format' : mode;
   const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
+  const csvInputLooksLikeJson = mode === 'convertCsv' && isLikelyJsonInput(input);
 
   const setInput = useCallback(
     (value: string) => {
@@ -214,15 +220,18 @@ export function useJsonToolState(mode: Mode) {
 
         if (mode === 'convertCsv') {
           setConvertSourceFormat(null);
-          let parsed: unknown;
+          const customInputLooksLikeJson = isLikelyJsonInput(customInput);
 
-          try {
-            parsed = JSON.parse(customInput);
+          if (customInputLooksLikeJson) {
+            const parsed = JSON.parse(customInput);
             const csv = convertJsonToCsv(parsed);
             setOutput(csv);
             setOutputLanguage('plaintext');
-            setErrorStatus({ message: 'Converted JSON to CSV', isError: false });
-          } catch {
+            setErrorStatus({
+              message: action === 'validate' ? 'Valid JSON (Converted to CSV)' : 'Converted JSON to CSV',
+              isError: false,
+            });
+          } else {
             const json = convertCsvToJson(customInput);
             setOutputLanguage('json');
             if (action === 'minify') {
@@ -298,7 +307,7 @@ export function useJsonToolState(mode: Mode) {
 
   const handleEditorValidation = useCallback(
     (markers: MonacoMarker[]) => {
-      if (mode === 'diff' || mode === 'convert' || mode === 'convertCsv' || mode === 'escape') {
+      if (mode === 'diff' || mode === 'convert' || (mode === 'convertCsv' && !csvInputLooksLikeJson) || mode === 'escape') {
         return;
       }
 
@@ -313,7 +322,7 @@ export function useJsonToolState(mode: Mode) {
         isError: true,
       });
     },
-    [input, mode],
+    [csvInputLooksLikeJson, input, mode],
   );
 
   const handleSchemaEditorValidation = useCallback(
@@ -379,6 +388,7 @@ export function useJsonToolState(mode: Mode) {
     setJsonPath,
     theme,
     setTheme,
+    csvInputLooksLikeJson,
     errorStatus,
     inputEditorRef,
     outputEditorRef,

@@ -8,6 +8,7 @@ type EditorWorkspaceProps = {
   input: string;
   output: string;
   outputLanguage: OutputLanguage;
+  csvInputLooksLikeJson: boolean;
   onInputChange: (value: string) => void;
   onInputValidate: (markers: any[]) => void;
   onExpandAll: () => void;
@@ -22,6 +23,7 @@ export function EditorWorkspace({
   input,
   output,
   outputLanguage,
+  csvInputLooksLikeJson,
   onInputChange,
   onInputValidate,
   onExpandAll,
@@ -52,7 +54,11 @@ export function EditorWorkspace({
   const inputLanguage =
     mode === 'convert'
       ? 'yaml'
-      : mode === 'convertCsv' || mode === 'escape'
+      : mode === 'convertCsv'
+        ? csvInputLooksLikeJson
+          ? 'json'
+          : 'plaintext'
+        : mode === 'escape'
         ? 'plaintext'
         : 'json';
   const outputMonacoLanguage = outputLanguage === 'plaintext' ? 'plaintext' : outputLanguage;
