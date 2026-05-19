@@ -27,8 +27,8 @@ export function MergeActionBar({
   const rightInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
-    <div className="flex items-center justify-between px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-4">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between px-3 sm:px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={onMerge}
           className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-blue-500 bg-blue-500/10 text-blue-400 transition-colors"
@@ -44,13 +44,13 @@ export function MergeActionBar({
 
         <button
           onClick={() => leftInputRef.current?.click()}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Upload className="w-3.5 h-3.5" /> Open Left
         </button>
         <button
           onClick={() => rightInputRef.current?.click()}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Upload className="w-3.5 h-3.5" /> Open Right
         </button>
@@ -83,28 +83,28 @@ export function MergeActionBar({
         />
       </div>
 
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         {errorStatus && (
           <div
-            className={`hidden md:flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest min-w-0 ${
+            className={`flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest min-w-0 ${
               errorStatus.isError ? 'text-red-500' : 'text-green-500'
             }`}
           >
             {errorStatus.isError ? <XCircle className="w-3.5 h-3.5 shrink-0" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-            <span className="truncate max-w-[320px]">{errorStatus.message}</span>
+            <span className="truncate max-w-[320px] sm:max-w-[360px]">{errorStatus.message}</span>
           </div>
         )}
 
-        <div className="h-4 w-[1px] bg-[#333] hidden sm:block"></div>
+        <div className="h-4 w-[1px] bg-[#333]"></div>
         <button
           onClick={() => onCopy(output)}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Copy className="w-3.5 h-3.5" /> Copy
         </button>
         <button
           onClick={() => onDownload(output, 'merged-result.json')}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Download className="w-3.5 h-3.5" /> Down
         </button>

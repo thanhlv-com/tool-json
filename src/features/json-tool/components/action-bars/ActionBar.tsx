@@ -113,8 +113,8 @@ export function ActionBar({
           : 'result.json';
 
   return (
-    <div className="flex items-center justify-between px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-4">
-      <div className="flex gap-2 shrink-0">
+    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between px-3 sm:px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-2">
+      <div className="flex flex-wrap gap-2">
         {!hideFormatMinify && (
           <button
             onClick={onFormat}
@@ -139,7 +139,7 @@ export function ActionBar({
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="px-3 py-1 hidden sm:flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Upload className="w-3.5 h-3.5" /> Open
         </button>
@@ -158,22 +158,22 @@ export function ActionBar({
         />
       </div>
 
-      <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         {mode === 'query' && (
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
             <div className="px-2 py-1 bg-[#262626] rounded text-[10px] font-bold text-blue-400 border border-[#333]">JSONPath</div>
             <input
               type="text"
               value={jsonPath}
               onChange={(event) => onJsonPathChange(event.target.value)}
-              className="bg-[#121214] border border-[#333] text-xs text-[#A0A0A0] outline-none rounded px-3 py-1 w-64 font-mono focus:border-blue-500 transition-colors hover:border-[#555]"
+              className="bg-[#121214] border border-[#333] text-xs text-[#A0A0A0] outline-none rounded px-3 py-1 w-full sm:w-64 font-mono focus:border-blue-500 transition-colors hover:border-[#555]"
               placeholder="$.features"
             />
           </div>
         )}
 
         {mode === 'convert' && (
-          <div className="hidden lg:flex items-center gap-2 text-[11px] text-[#A0A0A0] shrink-0">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#A0A0A0] shrink-0">
             <span className="text-[#808080]">Target</span>
             <select
               value={convertTargetFormat}
@@ -189,7 +189,7 @@ export function ActionBar({
         )}
 
         {mode === 'convertCsv' && (
-          <div className="hidden lg:flex items-center gap-2 text-[11px] text-[#A0A0A0]">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#A0A0A0]">
             <label className="flex items-center gap-1.5">
               <span className="text-[#808080]">Delimiter</span>
               <select
@@ -240,7 +240,7 @@ export function ActionBar({
         )}
 
         {mode === 'schemaValidate' && (
-          <div className="hidden lg:flex items-center gap-2 text-[11px] text-[#A0A0A0]">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#A0A0A0]">
             <label className="flex items-center gap-1.5">
               <span className="text-[#808080]">Draft</span>
               <select
@@ -268,25 +268,25 @@ export function ActionBar({
 
         {errorStatus && (
           <div
-            className={`hidden md:flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest min-w-0 ${
+            className={`flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest min-w-0 ${
               errorStatus.isError ? 'text-red-500' : 'text-green-500'
             }`}
           >
             {errorStatus.isError ? <XCircle className="w-3.5 h-3.5 shrink-0" /> : <span className="text-green-500">●</span>}
-            <span className="truncate max-w-[240px]">{errorStatus.message}</span>
+            <span className="truncate max-w-[320px] sm:max-w-[360px]">{errorStatus.message}</span>
           </div>
         )}
 
-        <div className="h-4 w-[1px] bg-[#333] hidden sm:block"></div>
+        <div className="h-4 w-[1px] bg-[#333]"></div>
         <button
           onClick={() => onCopy(output)}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Copy className="w-3.5 h-3.5" /> Copy
         </button>
         <button
           onClick={() => onDownload(output, downloadFilename)}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Download className="w-3.5 h-3.5" /> Down
         </button>

@@ -169,3 +169,12 @@ Legacy path:
 - Chưa có drag-and-drop file hoặc import nhiều file cùng lúc.
 - Chưa có shareable URL để mang theo mode/input/options.
 - `copyToClipboard` phụ thuộc quyền clipboard của browser.
+
+## 8. Responsive behavior
+
+- Mobile/small screens:
+- Top navigation chuyển sang cuộn ngang để không vỡ layout khi số mode nhiều.
+- Main workspace tự giảm về 1 cột (stack theo chiều dọc) cho các mode editor/diff/merge/patch/schema-validate.
+- Action bar tự wrap controls, không phụ thuộc nhiều vào hidden breakpoint như trước.
+- Large screens:
+- Nội dung được giới hạn `max-width` để tránh vùng làm việc quá dàn trải trên màn hình rất rộng.

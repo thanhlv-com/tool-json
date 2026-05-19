@@ -335,7 +335,7 @@ export function EditorWorkspace({
 
   return (
     <>
-      <section className="flex flex-col border-r border-[#262626]">
+      <section className="flex min-h-[240px] md:min-h-0 flex-col border-b border-[#262626] md:border-b-0 md:border-r">
         <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
           <span>{leftLabel}</span>
           <span>UTF-8</span>
@@ -369,7 +369,7 @@ export function EditorWorkspace({
         </div>
       </section>
 
-      <section className="flex flex-col">
+      <section className="flex min-h-[240px] md:min-h-0 flex-col">
         <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
           <div className="flex gap-4">
             <span className="text-blue-400 border-b border-blue-500 pb-1">{rightLabel}</span>

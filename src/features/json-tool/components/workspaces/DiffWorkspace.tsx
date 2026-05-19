@@ -1,4 +1,4 @@
-import { DiffEditor } from '@monaco-editor/react';
+import Editor, { DiffEditor } from '@monaco-editor/react';
 import type { ThemeMode } from '../../types';
 import type { JsonDiffReport } from '../../utils';
 
@@ -47,7 +47,7 @@ export function DiffWorkspace({
                 <span className="rounded border border-[#38383A] px-1.5 py-0.5 text-[#A5A5A8] uppercase">{detail.op}</span>
                 <span className="text-[#5EA7FF]">{detail.pathLabel}</span>
               </div>
-              <div className="mt-1 text-xs text-[#D0D0D0]">{detail.message}</div>
+              <div className="mt-1 text-xs text-[#D0D0D0] break-words">{detail.message}</div>
             </li>
           ))}
         </ul>
@@ -56,35 +56,91 @@ export function DiffWorkspace({
   };
 
   return (
-    <div className="col-span-2 grid grid-rows-[1fr_220px] w-full min-h-0">
+    <div className="col-span-1 md:col-span-2 grid grid-rows-[minmax(260px,1fr)_minmax(180px,42dvh)] md:grid-rows-[1fr_220px] w-full min-h-0">
       <div className="relative min-h-0 border-b border-[#262626]">
-        <DiffEditor
-          height="100%"
-          language="json"
-          theme={theme}
-          original={diffOriginal}
-          modified={diffModified}
-          onMount={(editor) => {
-            const modifiedModel = editor.getModifiedEditor().getModel();
-            const originalModel = editor.getOriginalEditor().getModel();
+        <div className="grid grid-rows-2 h-full md:hidden">
+          <section className="flex flex-col border-b border-[#262626]">
+            <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+              <span>ORIGINAL_JSON</span>
+            </div>
+            <div className="flex-1 bg-[#0F0F11]">
+              <Editor
+                height="100%"
+                language="json"
+                theme={theme}
+                value={diffOriginal}
+                onChange={(value) => onDiffOriginalChange(value || '')}
+                options={{
+                  minimap: { enabled: false },
+                  fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+                  fontSize: 13,
+                  lineNumbers: 'on',
+                  folding: true,
+                  wordWrap: 'on',
+                  scrollBeyondLastLine: false,
+                  padding: { top: 12 },
+                }}
+              />
+            </div>
+          </section>
 
-            if (modifiedModel) {
-              modifiedModel.onDidChangeContent(() => onDiffModifiedChange(modifiedModel.getValue()));
-            }
+          <section className="flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+              <span>MODIFIED_JSON</span>
+            </div>
+            <div className="flex-1 bg-[#0F0F11]">
+              <Editor
+                height="100%"
+                language="json"
+                theme={theme}
+                value={diffModified}
+                onChange={(value) => onDiffModifiedChange(value || '')}
+                options={{
+                  minimap: { enabled: false },
+                  fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+                  fontSize: 13,
+                  lineNumbers: 'on',
+                  folding: true,
+                  wordWrap: 'on',
+                  scrollBeyondLastLine: false,
+                  padding: { top: 12 },
+                }}
+              />
+            </div>
+          </section>
+        </div>
 
-            if (originalModel) {
-              originalModel.onDidChangeContent(() => onDiffOriginalChange(originalModel.getValue()));
-            }
-          }}
-          options={{
-            minimap: { enabled: false },
-            fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-            fontSize: 13,
-            renderSideBySide: true,
-            originalEditable: true,
-            wordWrap: 'on',
-          }}
-        />
+        <div className="hidden md:block h-full">
+          <DiffEditor
+            height="100%"
+            language="json"
+            theme={theme}
+            original={diffOriginal}
+            modified={diffModified}
+            onMount={(editor) => {
+              const modifiedModel = editor.getModifiedEditor().getModel();
+              const originalModel = editor.getOriginalEditor().getModel();
+
+              if (modifiedModel) {
+                modifiedModel.onDidChangeContent(() => onDiffModifiedChange(modifiedModel.getValue()));
+              }
+
+              if (originalModel) {
+                originalModel.onDidChangeContent(() => onDiffOriginalChange(originalModel.getValue()));
+              }
+            }}
+            options={{
+              minimap: { enabled: false },
+              fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+              fontSize: 13,
+              renderSideBySide: true,
+              renderSideBySideInlineBreakpoint: 900,
+              renderMarginRevertIcon: true,
+              originalEditable: true,
+              wordWrap: 'on',
+            }}
+          />
+        </div>
       </div>
 
       <section className="flex min-h-0 flex-col bg-[#0F0F11] px-4 py-3">

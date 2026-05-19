@@ -108,148 +108,150 @@ export function JsonToolPage() {
   }, [theme]);
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#0F0F11] text-[#E0E0E0] font-sans overflow-hidden">
-      <TopNavigation
-        mode={mode}
-        onNavigateMode={(nextMode) => navigate(MODE_PATHS[nextMode])}
-        syncInputAcrossModes={syncInputAcrossModes}
-        onSyncInputAcrossModesChange={setSyncInputAcrossModes}
-        showArrayHints={showArrayHints}
-        onShowArrayHintsChange={setShowArrayHints}
-        theme={theme}
-        onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'vs-dark' ? 'light' : 'vs-dark'))}
-      />
+    <div className="min-h-[100dvh] w-full bg-[#0F0F11] text-[#E0E0E0] font-sans">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[2200px] flex-col overflow-hidden">
+        <TopNavigation
+          mode={mode}
+          onNavigateMode={(nextMode) => navigate(MODE_PATHS[nextMode])}
+          syncInputAcrossModes={syncInputAcrossModes}
+          onSyncInputAcrossModesChange={setSyncInputAcrossModes}
+          showArrayHints={showArrayHints}
+          onShowArrayHintsChange={setShowArrayHints}
+          theme={theme}
+          onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'vs-dark' ? 'light' : 'vs-dark'))}
+        />
 
-      <div className="flex-1 flex flex-col min-h-0">
-        {mode === 'diff' ? (
-          <DiffActionBar diffReport={diffReport} diffParseError={diffParseError} onFormat={handleFormatDiff} />
-        ) : mode === 'merge' ? (
-          <MergeActionBar
-            output={output}
-            errorStatus={errorStatus}
-            onMerge={handleMergeJson}
-            onFormat={handleFormatMerge}
-            onCopy={copyToClipboard}
-            onDownload={downloadFile}
-            onImportLeftFile={importMergeLeftFile}
-            onImportRightFile={importMergeRightFile}
-          />
-        ) : mode === 'patch' ? (
-          <PatchActionBar
-            output={output}
-            errorStatus={errorStatus}
-            onGeneratePatch={handleGeneratePatch}
-            onApplyPatch={handleApplyPatch}
-            onCopy={copyToClipboard}
-            onDownload={downloadFile}
-            onImportBaseFile={importPatchBaseFile}
-            onImportTargetFile={importPatchTargetFile}
-            onImportPatchFile={importPatchOperationsFile}
-          />
-        ) : (
-          <ActionBar
-            mode={mode}
-            convertSourceFormat={convertSourceFormat}
-            convertTargetFormat={convertTargetFormat}
-            errorStatus={errorStatus}
-            jsonPath={jsonPath}
-            output={output}
-            outputLanguage={outputLanguage}
-            csvOptions={csvOptions}
-            schemaDraft={schemaDraft}
-            schemaCustomKeywordsInput={schemaCustomKeywordsInput}
-            onJsonPathChange={setJsonPath}
-            onConvertTargetFormatChange={setConvertTargetFormat}
-            onFormat={handleFormat}
-            onMinify={handleMinify}
-            onValidate={handleValidate}
-            onCopy={copyToClipboard}
-            onDownload={downloadFile}
-            onImportInputFile={importInputFile}
-            onCsvDelimiterChange={(delimiter) => setCsvOptions((previous) => ({ ...previous, delimiter }))}
-            onCsvHeaderRowChange={(hasHeaderRow) => setCsvOptions((previous) => ({ ...previous, hasHeaderRow }))}
-            onCsvQuoteStrategyChange={(quoteStrategy) => setCsvOptions((previous) => ({ ...previous, quoteStrategy }))}
-            onCsvEscapeStrategyChange={(escapeStrategy) => setCsvOptions((previous) => ({ ...previous, escapeStrategy }))}
-            onSchemaDraftChange={setSchemaDraft}
-            onSchemaCustomKeywordsInputChange={setSchemaCustomKeywordsInput}
-          />
-        )}
-
-        <main className="flex-1 grid grid-cols-2 bg-[#0F0F11] overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0">
           {mode === 'diff' ? (
-            <DiffWorkspace
-              theme={theme}
-              diffOriginal={diffOriginal}
-              diffModified={diffModified}
-              diffReport={diffReport}
-              diffParseError={diffParseError}
-              onDiffOriginalChange={setDiffOriginal}
-              onDiffModifiedChange={setDiffModified}
-            />
+            <DiffActionBar diffReport={diffReport} diffParseError={diffParseError} onFormat={handleFormatDiff} />
           ) : mode === 'merge' ? (
-            <MergeWorkspace
-              theme={theme}
-              mergeLeftInput={mergeLeftInput}
-              mergeRightInput={mergeRightInput}
+            <MergeActionBar
               output={output}
-              onMergeLeftInputChange={setMergeLeftInput}
-              onMergeRightInputChange={setMergeRightInput}
+              errorStatus={errorStatus}
+              onMerge={handleMergeJson}
+              onFormat={handleFormatMerge}
+              onCopy={copyToClipboard}
+              onDownload={downloadFile}
+              onImportLeftFile={importMergeLeftFile}
+              onImportRightFile={importMergeRightFile}
             />
           ) : mode === 'patch' ? (
-            <PatchWorkspace
-              theme={theme}
-              patchBaseInput={patchBaseInput}
-              patchTargetInput={patchTargetInput}
-              patchOperationsInput={patchOperationsInput}
+            <PatchActionBar
               output={output}
-              onPatchBaseInputChange={setPatchBaseInput}
-              onPatchTargetInputChange={setPatchTargetInput}
-              onPatchOperationsInputChange={setPatchOperationsInput}
-            />
-          ) : mode === 'schemaValidate' ? (
-            <SchemaValidateWorkspace
-              theme={theme}
-              input={input}
-              schemaInput={schemaInput}
-              output={output}
-              outputLanguage={outputLanguage}
-              schemaValidationIssues={schemaValidationIssues}
-              onInputChange={setInput}
-              onSchemaInputChange={setSchemaInput}
-              onInputValidate={handleEditorValidation}
-              onSchemaValidate={handleSchemaEditorValidation}
-              onInputEditorMount={(editor) => {
-                inputEditorRef.current = editor;
-              }}
-              onSchemaEditorMount={(editor) => {
-                schemaEditorRef.current = editor;
-              }}
-              onOutputEditorMount={(editor) => {
-                outputEditorRef.current = editor;
-              }}
+              errorStatus={errorStatus}
+              onGeneratePatch={handleGeneratePatch}
+              onApplyPatch={handleApplyPatch}
+              onCopy={copyToClipboard}
+              onDownload={downloadFile}
+              onImportBaseFile={importPatchBaseFile}
+              onImportTargetFile={importPatchTargetFile}
+              onImportPatchFile={importPatchOperationsFile}
             />
           ) : (
-            <EditorWorkspace
+            <ActionBar
               mode={mode}
-              theme={theme}
-              input={input}
+              convertSourceFormat={convertSourceFormat}
+              convertTargetFormat={convertTargetFormat}
+              errorStatus={errorStatus}
+              jsonPath={jsonPath}
               output={output}
               outputLanguage={outputLanguage}
-              csvInputLooksLikeJson={csvInputLooksLikeJson}
-              showArrayHints={showArrayHints}
-              onInputChange={setInput}
-              onInputValidate={handleEditorValidation}
-              onExpandAll={handleExpandAll}
-              onCollapseAll={handleCollapseAll}
-              onInputEditorMount={(editor) => {
-                inputEditorRef.current = editor;
-              }}
-              onOutputEditorMount={(editor) => {
-                outputEditorRef.current = editor;
-              }}
+              csvOptions={csvOptions}
+              schemaDraft={schemaDraft}
+              schemaCustomKeywordsInput={schemaCustomKeywordsInput}
+              onJsonPathChange={setJsonPath}
+              onConvertTargetFormatChange={setConvertTargetFormat}
+              onFormat={handleFormat}
+              onMinify={handleMinify}
+              onValidate={handleValidate}
+              onCopy={copyToClipboard}
+              onDownload={downloadFile}
+              onImportInputFile={importInputFile}
+              onCsvDelimiterChange={(delimiter) => setCsvOptions((previous) => ({ ...previous, delimiter }))}
+              onCsvHeaderRowChange={(hasHeaderRow) => setCsvOptions((previous) => ({ ...previous, hasHeaderRow }))}
+              onCsvQuoteStrategyChange={(quoteStrategy) => setCsvOptions((previous) => ({ ...previous, quoteStrategy }))}
+              onCsvEscapeStrategyChange={(escapeStrategy) => setCsvOptions((previous) => ({ ...previous, escapeStrategy }))}
+              onSchemaDraftChange={setSchemaDraft}
+              onSchemaCustomKeywordsInputChange={setSchemaCustomKeywordsInput}
             />
           )}
-        </main>
+
+          <main className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 bg-[#0F0F11] overflow-hidden">
+            {mode === 'diff' ? (
+              <DiffWorkspace
+                theme={theme}
+                diffOriginal={diffOriginal}
+                diffModified={diffModified}
+                diffReport={diffReport}
+                diffParseError={diffParseError}
+                onDiffOriginalChange={setDiffOriginal}
+                onDiffModifiedChange={setDiffModified}
+              />
+            ) : mode === 'merge' ? (
+              <MergeWorkspace
+                theme={theme}
+                mergeLeftInput={mergeLeftInput}
+                mergeRightInput={mergeRightInput}
+                output={output}
+                onMergeLeftInputChange={setMergeLeftInput}
+                onMergeRightInputChange={setMergeRightInput}
+              />
+            ) : mode === 'patch' ? (
+              <PatchWorkspace
+                theme={theme}
+                patchBaseInput={patchBaseInput}
+                patchTargetInput={patchTargetInput}
+                patchOperationsInput={patchOperationsInput}
+                output={output}
+                onPatchBaseInputChange={setPatchBaseInput}
+                onPatchTargetInputChange={setPatchTargetInput}
+                onPatchOperationsInputChange={setPatchOperationsInput}
+              />
+            ) : mode === 'schemaValidate' ? (
+              <SchemaValidateWorkspace
+                theme={theme}
+                input={input}
+                schemaInput={schemaInput}
+                output={output}
+                outputLanguage={outputLanguage}
+                schemaValidationIssues={schemaValidationIssues}
+                onInputChange={setInput}
+                onSchemaInputChange={setSchemaInput}
+                onInputValidate={handleEditorValidation}
+                onSchemaValidate={handleSchemaEditorValidation}
+                onInputEditorMount={(editor) => {
+                  inputEditorRef.current = editor;
+                }}
+                onSchemaEditorMount={(editor) => {
+                  schemaEditorRef.current = editor;
+                }}
+                onOutputEditorMount={(editor) => {
+                  outputEditorRef.current = editor;
+                }}
+              />
+            ) : (
+              <EditorWorkspace
+                mode={mode}
+                theme={theme}
+                input={input}
+                output={output}
+                outputLanguage={outputLanguage}
+                csvInputLooksLikeJson={csvInputLooksLikeJson}
+                showArrayHints={showArrayHints}
+                onInputChange={setInput}
+                onInputValidate={handleEditorValidation}
+                onExpandAll={handleExpandAll}
+                onCollapseAll={handleCollapseAll}
+                onInputEditorMount={(editor) => {
+                  inputEditorRef.current = editor;
+                }}
+                onOutputEditorMount={(editor) => {
+                  outputEditorRef.current = editor;
+                }}
+              />
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );

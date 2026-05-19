@@ -44,6 +44,7 @@ Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, s
 - Persist state vào `localStorage` (`json-dev-tool.state.v2`): reload vẫn giữ input/output/options/theme, `Type Hints`, và mode cuối.
 - Hỗ trợ import input từ file qua nút `Open` theo từng mode.
 - Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
+- Responsive layout cho mobile/tablet/desktop: top navigation cuộn ngang ở màn nhỏ, workspace tự đổi số cột theo kích thước màn hình, và action bar tự wrap controls.
 
 ## Cấu trúc chính
 
