@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react';
-import type { OutputLanguage, SchemaValidationIssue, ThemeMode } from './types';
+import type { OutputLanguage, SchemaValidationIssue, ThemeMode } from '../../types';
 
 type SchemaValidateWorkspaceProps = {
   theme: ThemeMode;

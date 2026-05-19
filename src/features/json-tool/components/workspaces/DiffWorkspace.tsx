@@ -1,6 +1,6 @@
 import { DiffEditor } from '@monaco-editor/react';
-import type { ThemeMode } from './types';
-import type { JsonDiffReport } from './utils';
+import type { ThemeMode } from '../../types';
+import type { JsonDiffReport } from '../../utils';
 
 type DiffWorkspaceProps = {
   theme: ThemeMode;

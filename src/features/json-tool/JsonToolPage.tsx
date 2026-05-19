@@ -1,16 +1,9 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ActionBar } from './ActionBar';
-import { DiffActionBar } from './DiffActionBar';
-import { DiffWorkspace } from './DiffWorkspace';
-import { EditorWorkspace } from './EditorWorkspace';
-import { MergeActionBar } from './MergeActionBar';
-import { MergeWorkspace } from './MergeWorkspace';
+import { ActionBar, DiffActionBar, MergeActionBar, PatchActionBar } from './components/action-bars';
+import { TopNavigation } from './components/navigation';
+import { DiffWorkspace, EditorWorkspace, MergeWorkspace, PatchWorkspace, SchemaValidateWorkspace } from './components/workspaces';
 import { MODE_PATHS, getModeFromPathname, isValidModePath } from './modeRoutes';
-import { PatchActionBar } from './PatchActionBar';
-import { PatchWorkspace } from './PatchWorkspace';
-import { SchemaValidateWorkspace } from './SchemaValidateWorkspace';
-import { TopNavigation } from './TopNavigation';
 import { getPersistedLastMode, useJsonToolState } from './useJsonToolState';
 
 export function JsonToolPage() {

@@ -9,9 +9,10 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - Path cũ `/yaml` vẫn được map sang mode `convert`, sau đó được canonical redirect sang `/convert`.
 - Nếu truy cập path không hợp lệ, app redirect về mode cuối trong `localStorage` (fallback `/editor`).
 - State và xử lý nghiệp vụ tập trung ở `useJsonToolState(mode)`.
-- `TopNavigation`: chuyển mode, bật/tắt `Sync Input`, bật/tắt `Type Hints`, đổi theme.
-- `ActionBar`/`DiffActionBar`/`PatchActionBar`: nhóm thao tác theo mode.
-- `EditorWorkspace`/`DiffWorkspace`/`SchemaValidateWorkspace`/`PatchWorkspace`: vùng editor.
+- Component UI được nhóm theo thư mục:
+- `components/navigation`: `TopNavigation`.
+- `components/action-bars`: `ActionBar`/`DiffActionBar`/`MergeActionBar`/`PatchActionBar`.
+- `components/workspaces`: `EditorWorkspace`/`DiffWorkspace`/`MergeWorkspace`/`SchemaValidateWorkspace`/`PatchWorkspace`.
 
 ## 2. Mode và route
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import YAML from 'yaml';
-import type { Mode, OutputLanguage, ThemeMode } from './types';
+import type { Mode, OutputLanguage, ThemeMode } from '../../types';
 
 type StructuredLanguage = 'json' | 'yaml' | 'xml' | 'plaintext';
 

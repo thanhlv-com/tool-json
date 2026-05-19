@@ -1,4 +1,4 @@
-import type { JsonDiffReport } from './utils';
+import type { JsonDiffReport } from '../../utils';
 
 type DiffActionBarProps = {
   diffReport: JsonDiffReport | null;

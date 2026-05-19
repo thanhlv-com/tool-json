@@ -49,6 +49,9 @@ Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, s
 
 - `src/router/AppRouter.tsx`: route entrypoint.
 - `src/features/json-tool/JsonToolPage.tsx`: page điều phối action bar + workspace theo mode.
+- `src/features/json-tool/components/action-bars/`: nhóm action bar theo mode.
+- `src/features/json-tool/components/workspaces/`: nhóm workspace editor theo mode.
+- `src/features/json-tool/components/navigation/`: top navigation.
 - `src/features/json-tool/modeRoutes.ts`: map mode <-> route.
 - `src/features/json-tool/useJsonToolState.ts`: state trung tâm + xử lý mode + localStorage persistence.
 - `src/features/json-tool/utils.ts`: helper cho schema/csv/escape/patch.

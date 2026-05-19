@@ -1,104 +1,82 @@
 import { useRef } from 'react';
-import { CheckCircle2, Copy, Download, GitCompareArrows, Upload, Wand2, XCircle } from 'lucide-react';
-import type { ErrorStatus } from './types';
+import { AlignLeft, CheckCircle2, Copy, Download, GitMerge, Upload, XCircle } from 'lucide-react';
+import type { ErrorStatus } from '../../types';
 
-type PatchActionBarProps = {
+type MergeActionBarProps = {
   output: string;
   errorStatus: ErrorStatus;
-  onGeneratePatch: () => void;
-  onApplyPatch: () => void;
+  onMerge: () => void;
+  onFormat: () => void;
   onCopy: (text: string) => void;
   onDownload: (content: string, filename: string) => void;
-  onImportBaseFile: (file: File) => void;
-  onImportTargetFile: (file: File) => void;
-  onImportPatchFile: (file: File) => void;
+  onImportLeftFile: (file: File) => void;
+  onImportRightFile: (file: File) => void;
 };
 
-export function PatchActionBar({
+export function MergeActionBar({
   output,
   errorStatus,
-  onGeneratePatch,
-  onApplyPatch,
+  onMerge,
+  onFormat,
   onCopy,
   onDownload,
-  onImportBaseFile,
-  onImportTargetFile,
-  onImportPatchFile,
-}: PatchActionBarProps) {
-  const baseInputRef = useRef<HTMLInputElement | null>(null);
-  const targetInputRef = useRef<HTMLInputElement | null>(null);
-  const patchInputRef = useRef<HTMLInputElement | null>(null);
+  onImportLeftFile,
+  onImportRightFile,
+}: MergeActionBarProps) {
+  const leftInputRef = useRef<HTMLInputElement | null>(null);
+  const rightInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <div className="flex items-center justify-between px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-4">
       <div className="flex items-center gap-2">
         <button
-          onClick={onGeneratePatch}
+          onClick={onMerge}
           className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-blue-500 bg-blue-500/10 text-blue-400 transition-colors"
         >
-          <GitCompareArrows className="w-3.5 h-3.5" /> Generate Patch
+          <GitMerge className="w-3.5 h-3.5" /> Merge
         </button>
         <button
-          onClick={onApplyPatch}
+          onClick={onFormat}
           className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
-          <Wand2 className="w-3.5 h-3.5" /> Apply Patch
+          <AlignLeft className="w-3.5 h-3.5" /> Format
         </button>
 
         <button
-          onClick={() => baseInputRef.current?.click()}
+          onClick={() => leftInputRef.current?.click()}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
-          <Upload className="w-3.5 h-3.5" /> Open Base
+          <Upload className="w-3.5 h-3.5" /> Open Left
         </button>
         <button
-          onClick={() => targetInputRef.current?.click()}
+          onClick={() => rightInputRef.current?.click()}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
-          <Upload className="w-3.5 h-3.5" /> Open Target
-        </button>
-        <button
-          onClick={() => patchInputRef.current?.click()}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
-        >
-          <Upload className="w-3.5 h-3.5" /> Open Patch
+          <Upload className="w-3.5 h-3.5" /> Open Right
         </button>
 
         <input
-          ref={baseInputRef}
+          ref={leftInputRef}
           type="file"
           accept=".json,.txt"
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) {
-              onImportBaseFile(file);
+              onImportLeftFile(file);
             }
             event.target.value = '';
           }}
         />
         <input
-          ref={targetInputRef}
+          ref={rightInputRef}
           type="file"
           accept=".json,.txt"
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) {
-              onImportTargetFile(file);
-            }
-            event.target.value = '';
-          }}
-        />
-        <input
-          ref={patchInputRef}
-          type="file"
-          accept=".json,.txt"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) {
-              onImportPatchFile(file);
+              onImportRightFile(file);
             }
             event.target.value = '';
           }}
@@ -113,7 +91,7 @@ export function PatchActionBar({
             }`}
           >
             {errorStatus.isError ? <XCircle className="w-3.5 h-3.5 shrink-0" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-            <span className="truncate max-w-[300px]">{errorStatus.message}</span>
+            <span className="truncate max-w-[320px]">{errorStatus.message}</span>
           </div>
         )}
 
@@ -125,7 +103,7 @@ export function PatchActionBar({
           <Copy className="w-3.5 h-3.5" /> Copy
         </button>
         <button
-          onClick={() => onDownload(output, 'patch-result.json')}
+          onClick={() => onDownload(output, 'merged-result.json')}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
         >
           <Download className="w-3.5 h-3.5" /> Down

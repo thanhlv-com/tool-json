@@ -13,7 +13,7 @@ import {
   Sun,
   Wand2,
 } from 'lucide-react';
-import type { Mode, ThemeMode } from './types';
+import type { Mode, ThemeMode } from '../../types';
 
 type TopNavigationProps = {
   mode: Mode;

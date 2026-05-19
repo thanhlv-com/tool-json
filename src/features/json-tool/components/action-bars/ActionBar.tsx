@@ -16,7 +16,7 @@ import type {
   Mode,
   OutputLanguage,
   SchemaDraft,
-} from './types';
+} from '../../types';
 
 type ActionBarProps = {
   mode: Exclude<Mode, 'diff' | 'patch' | 'merge'>;
