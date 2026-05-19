@@ -142,4 +142,6 @@
   white-space: nowrap;
   pointer-events: none;
   opacity: 0.9;
+  display: inline-block;
+  margin-left: 10px;
 }
