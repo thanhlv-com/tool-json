@@ -32,7 +32,7 @@ No automated unit/integration test framework is configured yet. For every change
 
 1. Run `npm run lint`.
 2. Run `npm run build`.
-3. Manually verify impacted modes in the browser (`/editor`, `/diff`, `/query`, `/yaml`, `/schema-generate`, `/schema-validate`, `/csv`, `/escape`).
+3. Manually verify impacted modes in the browser (`/editor`, `/diff`, `/query`, `/yaml`, `/schema-generate`, `/schema-validate`, `/csv`, `/escape`, `/patch`).
 
 If you add tests, place them near feature code (for example, `src/features/json-tool/__tests__/`).
 
