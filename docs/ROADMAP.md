@@ -55,6 +55,12 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 - Đã triển khai: hiển thị hints ngay trong editor bằng content widgets, gồm path + kiểu dữ liệu + metadata (`items`, `keys`).
 - Hành vi hiện tại: người dùng có thể bật/tắt qua cấu hình `Type Hints` và giá trị được persist trong `localStorage`.
 
+### 10) JSON Merge mode
+
+- Trạng thái: Done.
+- Đã triển khai: mode `/merge` với 2 input JSON (`LEFT_JSON`, `RIGHT_JSON`) và output `MERGED_RESULT`.
+- Hành vi hiện tại: merge sâu object theo key, merge array theo index, ưu tiên giá trị bên phải khi conflict; trả summary thống kê merge ngay trên status bar.
+
 ## 2. Next Priorities (chưa triển khai)
 
 ### 1) Bộ test tự động

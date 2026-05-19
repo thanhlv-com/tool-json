@@ -1,6 +1,7 @@
 export type Mode =
   | 'format'
   | 'diff'
+  | 'merge'
   | 'query'
   | 'convert'
   | 'schemaGenerate'

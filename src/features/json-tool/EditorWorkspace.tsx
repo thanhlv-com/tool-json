@@ -222,7 +222,7 @@ function applyArrayCountWidgets(
 }
 
 type EditorWorkspaceProps = {
-  mode: Exclude<Mode, 'diff'>;
+  mode: Exclude<Mode, 'diff' | 'patch' | 'merge'>;
   theme: ThemeMode;
   input: string;
   output: string;

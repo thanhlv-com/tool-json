@@ -1,0 +1,114 @@
+import { useRef } from 'react';
+import { AlignLeft, CheckCircle2, Copy, Download, GitMerge, Upload, XCircle } from 'lucide-react';
+import type { ErrorStatus } from './types';
+
+type MergeActionBarProps = {
+  output: string;
+  errorStatus: ErrorStatus;
+  onMerge: () => void;
+  onFormat: () => void;
+  onCopy: (text: string) => void;
+  onDownload: (content: string, filename: string) => void;
+  onImportLeftFile: (file: File) => void;
+  onImportRightFile: (file: File) => void;
+};
+
+export function MergeActionBar({
+  output,
+  errorStatus,
+  onMerge,
+  onFormat,
+  onCopy,
+  onDownload,
+  onImportLeftFile,
+  onImportRightFile,
+}: MergeActionBarProps) {
+  const leftInputRef = useRef<HTMLInputElement | null>(null);
+  const rightInputRef = useRef<HTMLInputElement | null>(null);
+
+  return (
+    <div className="flex items-center justify-between px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-4">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onMerge}
+          className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-blue-500 bg-blue-500/10 text-blue-400 transition-colors"
+        >
+          <GitMerge className="w-3.5 h-3.5" /> Merge
+        </button>
+        <button
+          onClick={onFormat}
+          className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <AlignLeft className="w-3.5 h-3.5" /> Format
+        </button>
+
+        <button
+          onClick={() => leftInputRef.current?.click()}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <Upload className="w-3.5 h-3.5" /> Open Left
+        </button>
+        <button
+          onClick={() => rightInputRef.current?.click()}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <Upload className="w-3.5 h-3.5" /> Open Right
+        </button>
+
+        <input
+          ref={leftInputRef}
+          type="file"
+          accept=".json,.txt"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              onImportLeftFile(file);
+            }
+            event.target.value = '';
+          }}
+        />
+        <input
+          ref={rightInputRef}
+          type="file"
+          accept=".json,.txt"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              onImportRightFile(file);
+            }
+            event.target.value = '';
+          }}
+        />
+      </div>
+
+      <div className="flex items-center gap-3 min-w-0">
+        {errorStatus && (
+          <div
+            className={`hidden md:flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold tracking-widest min-w-0 ${
+              errorStatus.isError ? 'text-red-500' : 'text-green-500'
+            }`}
+          >
+            {errorStatus.isError ? <XCircle className="w-3.5 h-3.5 shrink-0" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+            <span className="truncate max-w-[320px]">{errorStatus.message}</span>
+          </div>
+        )}
+
+        <div className="h-4 w-[1px] bg-[#333] hidden sm:block"></div>
+        <button
+          onClick={() => onCopy(output)}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <Copy className="w-3.5 h-3.5" /> Copy
+        </button>
+        <button
+          onClick={() => onDownload(output, 'merged-result.json')}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" /> Down
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -3,6 +3,7 @@ import type { Mode } from './types';
 export const MODE_PATHS: Record<Mode, string> = {
   format: '/editor',
   diff: '/diff',
+  merge: '/merge',
   query: '/query',
   convert: '/convert',
   schemaGenerate: '/schema-generate',

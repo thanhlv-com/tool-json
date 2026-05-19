@@ -3,6 +3,7 @@ import {
   Braces,
   Link2,
   FileCode2,
+  GitMerge,
   ShieldCheck,
   Sparkles,
   Table2,
@@ -61,6 +62,14 @@ export function TopNavigation({
             }`}
           >
             <SplitSquareHorizontal className="w-3.5 h-3.5" /> JSON Diff
+          </button>
+          <button
+            onClick={() => onNavigateMode('merge')}
+            className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+              mode === 'merge' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+            }`}
+          >
+            <GitMerge className="w-3.5 h-3.5" /> Merge
           </button>
           <button
             onClick={() => onNavigateMode('query')}

@@ -23,6 +23,7 @@ import {
   generateJsonDiffReport,
   generateJsonPatchOperations,
   generateJsonSchemaFromSample,
+  mergeJsonStructures,
   type JsonDiffReport,
   validateJsonBySchema,
 } from './utils';
@@ -44,6 +45,10 @@ const DEFAULT_PATCH_BASE_INPUT = '{\n  "status": "ok",\n  "code": 200\n}';
 const DEFAULT_PATCH_TARGET_INPUT = '{\n  "status": "error",\n  "code": 500,\n  "message": "Failed"\n}';
 const DEFAULT_PATCH_OPERATIONS_INPUT =
   '[\n  {\n    "op": "replace",\n    "path": "/status",\n    "value": "error"\n  },\n  {\n    "op": "replace",\n    "path": "/code",\n    "value": 500\n  }\n]';
+const DEFAULT_MERGE_LEFT_INPUT =
+  '{\n  "service": {\n    "name": "json-tool",\n    "features": ["format", "diff"],\n    "retries": 2,\n    "enabled": true\n  }\n}';
+const DEFAULT_MERGE_RIGHT_INPUT =
+  '{\n  "service": {\n    "features": ["format", "merge", "schema"],\n    "retries": 5,\n    "timeout": 3000\n  },\n  "meta": {\n    "version": "2.0.0"\n  }\n}';
 
 const DEFAULT_CSV_OPTIONS: CsvOptions = {
   delimiter: ',',
@@ -52,10 +57,10 @@ const DEFAULT_CSV_OPTIONS: CsvOptions = {
   escapeStrategy: 'double',
 };
 
-type InputMode = Exclude<Mode, 'diff' | 'patch'>;
+type InputMode = Exclude<Mode, 'diff' | 'patch' | 'merge'>;
 
 const INPUT_MODES: InputMode[] = ['format', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape'];
-const ALL_MODES: Mode[] = ['format', 'diff', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape', 'patch'];
+const ALL_MODES: Mode[] = ['format', 'diff', 'merge', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape', 'patch'];
 
 type PersistedState = {
   version: 2;
@@ -78,6 +83,8 @@ type PersistedState = {
   patchBaseInput: string;
   patchTargetInput: string;
   patchOperationsInput: string;
+  mergeLeftInput: string;
+  mergeRightInput: string;
   lastMode: Mode;
 };
 
@@ -113,6 +120,8 @@ function createDefaultPersistedState(): PersistedState {
     patchBaseInput: DEFAULT_PATCH_BASE_INPUT,
     patchTargetInput: DEFAULT_PATCH_TARGET_INPUT,
     patchOperationsInput: DEFAULT_PATCH_OPERATIONS_INPUT,
+    mergeLeftInput: DEFAULT_MERGE_LEFT_INPUT,
+    mergeRightInput: DEFAULT_MERGE_RIGHT_INPUT,
     lastMode: 'format',
   };
 }
@@ -198,11 +207,13 @@ export function useJsonToolState(mode: Mode) {
   const [patchBaseInput, setPatchBaseInput] = useState<string>(initialState.patchBaseInput);
   const [patchTargetInput, setPatchTargetInput] = useState<string>(initialState.patchTargetInput);
   const [patchOperationsInput, setPatchOperationsInput] = useState<string>(initialState.patchOperationsInput);
+  const [mergeLeftInput, setMergeLeftInput] = useState<string>(initialState.mergeLeftInput);
+  const [mergeRightInput, setMergeRightInput] = useState<string>(initialState.mergeRightInput);
 
   const inputEditorRef = useRef<any>(null);
   const outputEditorRef = useRef<any>(null);
   const schemaEditorRef = useRef<any>(null);
-  const inputMode: InputMode = mode === 'diff' || mode === 'patch' ? 'format' : mode;
+  const inputMode: InputMode = mode === 'diff' || mode === 'patch' || mode === 'merge' ? 'format' : mode;
   const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
   const csvInputLooksLikeJson = mode === 'convertCsv' && isLikelyJsonInput(input);
 
@@ -428,7 +439,7 @@ export function useJsonToolState(mode: Mode) {
           return;
         }
 
-        if (mode === 'patch' || mode === 'diff') {
+        if (mode === 'patch' || mode === 'diff' || mode === 'merge') {
           return;
         }
 
@@ -494,6 +505,40 @@ export function useJsonToolState(mode: Mode) {
     }
   }, [patchBaseInput, patchOperationsInput]);
 
+  const handleMergeJson = useCallback(() => {
+    try {
+      const left = JSON.parse(mergeLeftInput);
+      const right = JSON.parse(mergeRightInput);
+      const merged = mergeJsonStructures(left, right);
+
+      setOutput(JSON.stringify(merged.merged, null, 2));
+      setOutputLanguage('json');
+      setErrorStatus({
+        message:
+          `Merged successfully | ops: ${merged.stats.operationCount}` +
+          ` | +keys: ${merged.stats.addedKeys}` +
+          ` | overwrite: ${merged.stats.overwrittenValues}` +
+          ` | +array: ${merged.stats.appendedArrayItems}` +
+          ` | type-conflict: ${merged.stats.typeConflicts}`,
+        isError: false,
+      });
+    } catch (error: any) {
+      setErrorStatus({ message: `Merge error: ${error.message}`, isError: true });
+    }
+  }, [mergeLeftInput, mergeRightInput]);
+
+  const handleFormatMerge = useCallback(() => {
+    try {
+      const formattedLeft = JSON.stringify(JSON.parse(mergeLeftInput), null, 2);
+      const formattedRight = JSON.stringify(JSON.parse(mergeRightInput), null, 2);
+      setMergeLeftInput(formattedLeft);
+      setMergeRightInput(formattedRight);
+      setErrorStatus({ message: 'Formatted merge inputs', isError: false });
+    } catch (error: any) {
+      setErrorStatus({ message: `Merge format error: ${error.message}`, isError: true });
+    }
+  }, [mergeLeftInput, mergeRightInput]);
+
   const handleFormatDiff = useCallback(() => {
     const hasOriginal = diffOriginal.trim().length > 0;
     const hasModified = diffModified.trim().length > 0;
@@ -539,6 +584,14 @@ export function useJsonToolState(mode: Mode) {
   }, [mode, patchOperationsInput]);
 
   useEffect(() => {
+    if (mode !== 'merge') {
+      return;
+    }
+
+    handleMergeJson();
+  }, [handleMergeJson, mode]);
+
+  useEffect(() => {
     if (!diffOriginal.trim() && !diffModified.trim()) {
       setDiffReport(null);
       setDiffParseError(null);
@@ -570,7 +623,7 @@ export function useJsonToolState(mode: Mode) {
   }, [diffModified, diffOriginal]);
 
   useEffect(() => {
-    if (mode !== 'diff' && mode !== 'patch') {
+    if (mode !== 'diff' && mode !== 'patch' && mode !== 'merge') {
       processJson();
     }
   }, [mode, processJson, jsonPath, schemaInput, csvOptions, schemaDraft, schemaCustomKeywordsInput]);
@@ -581,6 +634,8 @@ export function useJsonToolState(mode: Mode) {
         event.preventDefault();
         if (mode === 'patch') {
           handleGeneratePatch();
+        } else if (mode === 'merge') {
+          handleMergeJson();
         } else {
           processJson('validate');
         }
@@ -588,14 +643,16 @@ export function useJsonToolState(mode: Mode) {
 
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'f') {
         event.preventDefault();
-        if (mode !== 'patch') {
+        if (mode === 'merge') {
+          handleFormatMerge();
+        } else if (mode !== 'patch') {
           processJson('format');
         }
       }
 
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'm') {
         event.preventDefault();
-        if (mode !== 'patch') {
+        if (mode !== 'patch' && mode !== 'merge') {
           processJson('minify');
         }
       }
@@ -603,13 +660,14 @@ export function useJsonToolState(mode: Mode) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleGeneratePatch, mode, processJson]);
+  }, [handleFormatMerge, handleGeneratePatch, handleMergeJson, mode, processJson]);
 
   const handleEditorValidation = useCallback(
     (markers: MonacoMarker[]) => {
       if (
         mode === 'diff' ||
         mode === 'patch' ||
+        mode === 'merge' ||
         mode === 'convert' ||
         (mode === 'convertCsv' && !csvInputLooksLikeJson) ||
         mode === 'escape'
@@ -733,6 +791,26 @@ export function useJsonToolState(mode: Mode) {
     }
   }, []);
 
+  const importMergeLeftFile = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      setMergeLeftInput(text);
+      setErrorStatus({ message: `Loaded left JSON from ${file.name}`, isError: false });
+    } catch {
+      setErrorStatus({ message: `Failed to read ${file.name}`, isError: true });
+    }
+  }, []);
+
+  const importMergeRightFile = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      setMergeRightInput(text);
+      setErrorStatus({ message: `Loaded right JSON from ${file.name}`, isError: false });
+    } catch {
+      setErrorStatus({ message: `Failed to read ${file.name}`, isError: true });
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -759,6 +837,8 @@ export function useJsonToolState(mode: Mode) {
       patchBaseInput,
       patchTargetInput,
       patchOperationsInput,
+      mergeLeftInput,
+      mergeRightInput,
       lastMode: mode,
     };
 
@@ -777,6 +857,8 @@ export function useJsonToolState(mode: Mode) {
     patchBaseInput,
     patchOperationsInput,
     patchTargetInput,
+    mergeLeftInput,
+    mergeRightInput,
     schemaCustomKeywordsInput,
     schemaDraft,
     schemaInput,
@@ -825,6 +907,10 @@ export function useJsonToolState(mode: Mode) {
     setPatchTargetInput,
     patchOperationsInput,
     setPatchOperationsInput,
+    mergeLeftInput,
+    setMergeLeftInput,
+    mergeRightInput,
+    setMergeRightInput,
     inputEditorRef,
     outputEditorRef,
     schemaEditorRef,
@@ -835,6 +921,8 @@ export function useJsonToolState(mode: Mode) {
     handleValidate,
     handleGeneratePatch,
     handleApplyPatch,
+    handleMergeJson,
+    handleFormatMerge,
     handleFormatDiff,
     handleExpandAll,
     handleCollapseAll,
@@ -844,5 +932,7 @@ export function useJsonToolState(mode: Mode) {
     importPatchBaseFile,
     importPatchTargetFile,
     importPatchOperationsFile,
+    importMergeLeftFile,
+    importMergeRightFile,
   };
 }

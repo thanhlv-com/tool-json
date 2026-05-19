@@ -19,7 +19,7 @@ import type {
 } from './types';
 
 type ActionBarProps = {
-  mode: Exclude<Mode, 'diff' | 'patch'>;
+  mode: Exclude<Mode, 'diff' | 'patch' | 'merge'>;
   convertSourceFormat: ConvertSourceFormat;
   convertTargetFormat: ConvertTargetFormat;
   errorStatus: ErrorStatus;
@@ -45,7 +45,7 @@ type ActionBarProps = {
   onSchemaCustomKeywordsInputChange: (value: string) => void;
 };
 
-function getInputAccept(mode: Exclude<Mode, 'diff' | 'patch'>): string {
+function getInputAccept(mode: Exclude<Mode, 'diff' | 'patch' | 'merge'>): string {
   if (mode === 'convertCsv') return '.json,.csv,.tsv,.txt';
   if (mode === 'convert') return '.json';
   if (mode === 'escape') return '.txt,.json';

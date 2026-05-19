@@ -25,6 +25,7 @@ npm run preview
 
 - `/editor`: JSON editor (format, minify, validate).
 - `/diff`: so sánh hai JSON bằng Monaco DiffEditor, có `Format` cho cả 2 pane và panel diff chi tiết theo path.
+- `/merge`: merge hai cấu trúc JSON (`LEFT_JSON` + `RIGHT_JSON`) thành `MERGED_RESULT`.
 - `/query`: chạy JSONPath query trên input JSON.
 - `/convert`: convert từ JSON sang `YAML`, `XML`, hoặc `Properties` (input bắt buộc là JSON hợp lệ).
 - `/schema-generate`: tạo JSON Schema từ sample JSON.
@@ -39,6 +40,7 @@ Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, s
 
 - Type hints hiển thị trực tiếp bên trong editor (Monaco content widget) cho cả object/array/scalar, kèm path và thông tin số lượng (`items`, `keys`), có toggle `Type Hints`.
 - Diff report có summary (`+/-/~`) và danh sách detail theo từng operation/path để phân tích nhanh case thiếu item hoặc đổi kiểu dữ liệu.
+- Merge report có summary số thay đổi (`ops`, `+keys`, `overwrite`, `+array`, `type-conflict`) để theo dõi kết quả hợp nhất.
 - Persist state vào `localStorage` (`json-dev-tool.state.v2`): reload vẫn giữ input/output/options/theme, `Type Hints`, và mode cuối.
 - Hỗ trợ import input từ file qua nút `Open` theo từng mode.
 - Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).

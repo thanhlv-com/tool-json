@@ -19,6 +19,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 | --- | --- | --- |
 | `format` | `/editor` | Format, minify, validate JSON |
 | `diff` | `/diff` | So sánh JSON gốc và JSON sửa + panel diff details |
+| `merge` | `/merge` | Merge hai JSON structure thành một JSON duy nhất |
 | `query` | `/query` | JSONPath query |
 | `convert` | `/convert` | Convert JSON -> YAML/XML/Properties |
 | `schemaGenerate` | `/schema-generate` | Sinh JSON Schema từ sample JSON |
@@ -66,7 +67,18 @@ Legacy path:
 - Output luôn là mảng kết quả query (JSON pretty).
 - Lỗi JSONPath hiển thị `Invalid JSONPath: ...`.
 
-### 4.4 `/convert`
+### 4.4 `/merge`
+
+- Input gồm 2 editor độc lập: `LEFT_JSON` và `RIGHT_JSON`.
+- Kết quả được hiển thị ở `MERGED_RESULT` (read-only).
+- Quy tắc merge:
+- Object: merge sâu theo key.
+- Array: merge theo index, giữ phần tử còn lại và append item mới từ mảng bên phải.
+- Scalar hoặc khác kiểu: ưu tiên giá trị bên phải.
+- Có nút `Merge` để chạy hợp nhất và nút `Format` để format nhanh cả 2 input.
+- Status bar hiển thị summary: `ops`, `+keys`, `overwrite`, `+array`, `type-conflict`.
+
+### 4.5 `/convert`
 
 - Input bắt buộc là JSON hợp lệ.
 - Nếu JSON không hợp lệ, báo lỗi rõ ràng: `Convert mode only accepts valid JSON input: ...`.
@@ -78,7 +90,7 @@ Legacy path:
 - `Minify` có tác dụng khi target là YAML/XML (compact output).
 - `Open` chỉ chấp nhận file `.json` ở mode này.
 
-### 4.5 `/schema-generate`
+### 4.6 `/schema-generate`
 
 - Parse sample JSON.
 - Sinh schema theo kiểu dữ liệu thực tế của input.
@@ -86,7 +98,7 @@ Legacy path:
 - Object tự điền `required` theo toàn bộ key hiện có.
 - Schema root có `$schema: draft-07`.
 
-### 4.6 `/schema-validate`
+### 4.7 `/schema-validate`
 
 - Input gồm 2 editor: `JSON_DATA` và `JSON_SCHEMA`.
 - Validate bằng AJV (`allErrors: true`, `strict: false`).
@@ -95,7 +107,7 @@ Legacy path:
 - Output gồm `valid`, `draft`, `customKeywords`, `errorCount`, `errors[]` (`{ path, message, keyword }`).
 - Có `ERROR_PANEL` hiển thị danh sách lỗi chi tiết theo path.
 
-### 4.7 `/csv`
+### 4.8 `/csv`
 
 - Tự nhận diện input:
 - Nếu text bắt đầu bằng `{` hoặc `[` thì convert JSON -> CSV.
@@ -109,13 +121,13 @@ Legacy path:
 - CSV -> JSON có parse kiểu cơ bản: number, boolean, null, JSON object/array trong cell.
 - Nếu có header nhưng không có body thì output `[]`.
 
-### 4.8 `/escape`
+### 4.9 `/escape`
 
 - Nếu input parse được JSON và là string -> unescape.
 - Nếu input parse được JSON nhưng không phải string -> escape thành JSON string.
 - Nếu input không parse được JSON -> escape raw text thành JSON string.
 
-### 4.9 `/patch`
+### 4.10 `/patch`
 
 - Dùng `fast-json-patch` để xử lý RFC 6902.
 - `Generate Patch`: so sánh `BASE_JSON` và `TARGET_JSON`, sinh operations.

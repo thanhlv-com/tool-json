@@ -4,6 +4,8 @@ import { ActionBar } from './ActionBar';
 import { DiffActionBar } from './DiffActionBar';
 import { DiffWorkspace } from './DiffWorkspace';
 import { EditorWorkspace } from './EditorWorkspace';
+import { MergeActionBar } from './MergeActionBar';
+import { MergeWorkspace } from './MergeWorkspace';
 import { MODE_PATHS, getModeFromPathname, isValidModePath } from './modeRoutes';
 import { PatchActionBar } from './PatchActionBar';
 import { PatchWorkspace } from './PatchWorkspace';
@@ -75,6 +77,10 @@ export function JsonToolPage() {
     setPatchTargetInput,
     patchOperationsInput,
     setPatchOperationsInput,
+    mergeLeftInput,
+    setMergeLeftInput,
+    mergeRightInput,
+    setMergeRightInput,
     inputEditorRef,
     outputEditorRef,
     schemaEditorRef,
@@ -85,6 +91,8 @@ export function JsonToolPage() {
     handleValidate,
     handleGeneratePatch,
     handleApplyPatch,
+    handleMergeJson,
+    handleFormatMerge,
     handleFormatDiff,
     handleExpandAll,
     handleCollapseAll,
@@ -94,6 +102,8 @@ export function JsonToolPage() {
     importPatchBaseFile,
     importPatchTargetFile,
     importPatchOperationsFile,
+    importMergeLeftFile,
+    importMergeRightFile,
   } = useJsonToolState(mode);
 
   useEffect(() => {
@@ -120,6 +130,17 @@ export function JsonToolPage() {
       <div className="flex-1 flex flex-col min-h-0">
         {mode === 'diff' ? (
           <DiffActionBar diffReport={diffReport} diffParseError={diffParseError} onFormat={handleFormatDiff} />
+        ) : mode === 'merge' ? (
+          <MergeActionBar
+            output={output}
+            errorStatus={errorStatus}
+            onMerge={handleMergeJson}
+            onFormat={handleFormatMerge}
+            onCopy={copyToClipboard}
+            onDownload={downloadFile}
+            onImportLeftFile={importMergeLeftFile}
+            onImportRightFile={importMergeRightFile}
+          />
         ) : mode === 'patch' ? (
           <PatchActionBar
             output={output}
@@ -171,6 +192,15 @@ export function JsonToolPage() {
               diffParseError={diffParseError}
               onDiffOriginalChange={setDiffOriginal}
               onDiffModifiedChange={setDiffModified}
+            />
+          ) : mode === 'merge' ? (
+            <MergeWorkspace
+              theme={theme}
+              mergeLeftInput={mergeLeftInput}
+              mergeRightInput={mergeRightInput}
+              output={output}
+              onMergeLeftInputChange={setMergeLeftInput}
+              onMergeRightInputChange={setMergeRightInput}
             />
           ) : mode === 'patch' ? (
             <PatchWorkspace

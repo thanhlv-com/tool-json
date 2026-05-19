@@ -522,6 +522,20 @@ export type JsonDiffReport = {
   };
 };
 
+export type JsonMergeStats = {
+  addedKeys: number;
+  overwrittenValues: number;
+  mergedArrays: number;
+  appendedArrayItems: number;
+  typeConflicts: number;
+  operationCount: number;
+};
+
+export type JsonMergeResult = {
+  merged: unknown;
+  stats: JsonMergeStats;
+};
+
 function escapeJsonPointerToken(token: string): string {
   return token.replace(/~/g, '~0').replace(/\//g, '~1');
 }
@@ -757,6 +771,115 @@ export function generateJsonDiffReport(original: unknown, modified: unknown): Js
     operations,
     details,
     summary,
+  };
+}
+
+function isMergeObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function cloneJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneJsonValue(item));
+  }
+
+  if (isMergeObject(value)) {
+    return Object.entries(value).reduce(
+      (result, [key, item]) => {
+        result[key] = cloneJsonValue(item);
+        return result;
+      },
+      {} as Record<string, unknown>,
+    );
+  }
+
+  return value;
+}
+
+function getJsonTypeLabel(value: unknown): string {
+  if (Array.isArray(value)) {
+    return 'array';
+  }
+  if (value === null) {
+    return 'null';
+  }
+  return typeof value;
+}
+
+function mergeJsonValue(left: unknown, right: unknown, stats: Omit<JsonMergeStats, 'operationCount'>): unknown {
+  if (Array.isArray(left) && Array.isArray(right)) {
+    stats.mergedArrays += 1;
+    const maxLength = Math.max(left.length, right.length);
+    const mergedArray: unknown[] = [];
+
+    for (let index = 0; index < maxLength; index += 1) {
+      const hasLeft = index < left.length;
+      const hasRight = index < right.length;
+
+      if (hasLeft && hasRight) {
+        mergedArray.push(mergeJsonValue(left[index], right[index], stats));
+      } else if (hasLeft) {
+        mergedArray.push(cloneJsonValue(left[index]));
+      } else if (hasRight) {
+        mergedArray.push(cloneJsonValue(right[index]));
+        stats.appendedArrayItems += 1;
+      }
+    }
+
+    return mergedArray;
+  }
+
+  if (isMergeObject(left) && isMergeObject(right)) {
+    const mergedObject: Record<string, unknown> = Object.entries(left).reduce(
+      (result, [key, value]) => {
+        result[key] = cloneJsonValue(value);
+        return result;
+      },
+      {} as Record<string, unknown>,
+    );
+
+    Object.entries(right).forEach(([key, rightValue]) => {
+      if (Object.prototype.hasOwnProperty.call(left, key)) {
+        mergedObject[key] = mergeJsonValue((left as Record<string, unknown>)[key], rightValue, stats);
+      } else {
+        mergedObject[key] = cloneJsonValue(rightValue);
+        stats.addedKeys += 1;
+      }
+    });
+
+    return mergedObject;
+  }
+
+  if (JSON.stringify(left) === JSON.stringify(right)) {
+    return cloneJsonValue(right);
+  }
+
+  const leftType = getJsonTypeLabel(left);
+  const rightType = getJsonTypeLabel(right);
+  if (leftType !== rightType) {
+    stats.typeConflicts += 1;
+  }
+  stats.overwrittenValues += 1;
+  return cloneJsonValue(right);
+}
+
+export function mergeJsonStructures(left: unknown, right: unknown): JsonMergeResult {
+  const stats: Omit<JsonMergeStats, 'operationCount'> = {
+    addedKeys: 0,
+    overwrittenValues: 0,
+    mergedArrays: 0,
+    appendedArrayItems: 0,
+    typeConflicts: 0,
+  };
+  const merged = mergeJsonValue(left, right, stats);
+  const operationCount = stats.addedKeys + stats.overwrittenValues + stats.appendedArrayItems;
+
+  return {
+    merged,
+    stats: {
+      ...stats,
+      operationCount,
+    },
   };
 }
 
