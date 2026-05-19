@@ -5,9 +5,11 @@ import { DiffActionBar } from './DiffActionBar';
 import { DiffWorkspace } from './DiffWorkspace';
 import { EditorWorkspace } from './EditorWorkspace';
 import { MODE_PATHS, getModeFromPathname, isValidModePath } from './modeRoutes';
+import { PatchActionBar } from './PatchActionBar';
+import { PatchWorkspace } from './PatchWorkspace';
 import { SchemaValidateWorkspace } from './SchemaValidateWorkspace';
 import { TopNavigation } from './TopNavigation';
-import { useJsonToolState } from './useJsonToolState';
+import { getPersistedLastMode, useJsonToolState } from './useJsonToolState';
 
 export function JsonToolPage() {
   const location = useLocation();
@@ -16,7 +18,8 @@ export function JsonToolPage() {
 
   useEffect(() => {
     if (!isValidModePath(location.pathname)) {
-      navigate(MODE_PATHS.format, { replace: true });
+      const persistedMode = getPersistedLastMode();
+      navigate(MODE_PATHS[persistedMode ?? 'format'], { replace: true });
     }
   }, [location.pathname, navigate]);
 
@@ -40,6 +43,19 @@ export function JsonToolPage() {
     setTheme,
     csvInputLooksLikeJson,
     errorStatus,
+    csvOptions,
+    setCsvOptions,
+    schemaDraft,
+    setSchemaDraft,
+    schemaCustomKeywordsInput,
+    setSchemaCustomKeywordsInput,
+    schemaValidationIssues,
+    patchBaseInput,
+    setPatchBaseInput,
+    patchTargetInput,
+    setPatchTargetInput,
+    patchOperationsInput,
+    setPatchOperationsInput,
     inputEditorRef,
     outputEditorRef,
     schemaEditorRef,
@@ -48,10 +64,16 @@ export function JsonToolPage() {
     handleFormat,
     handleMinify,
     handleValidate,
+    handleGeneratePatch,
+    handleApplyPatch,
     handleExpandAll,
     handleCollapseAll,
     copyToClipboard,
     downloadFile,
+    importInputFile,
+    importPatchBaseFile,
+    importPatchTargetFile,
+    importPatchOperationsFile,
   } = useJsonToolState(mode);
 
   useEffect(() => {
@@ -74,7 +96,21 @@ export function JsonToolPage() {
       />
 
       <div className="flex-1 flex flex-col min-h-0">
-        {mode !== 'diff' ? (
+        {mode === 'diff' ? (
+          <DiffActionBar />
+        ) : mode === 'patch' ? (
+          <PatchActionBar
+            output={output}
+            errorStatus={errorStatus}
+            onGeneratePatch={handleGeneratePatch}
+            onApplyPatch={handleApplyPatch}
+            onCopy={copyToClipboard}
+            onDownload={downloadFile}
+            onImportBaseFile={importPatchBaseFile}
+            onImportTargetFile={importPatchTargetFile}
+            onImportPatchFile={importPatchOperationsFile}
+          />
+        ) : (
           <ActionBar
             mode={mode}
             convertSourceFormat={convertSourceFormat}
@@ -82,15 +118,23 @@ export function JsonToolPage() {
             jsonPath={jsonPath}
             output={output}
             outputLanguage={outputLanguage}
+            csvOptions={csvOptions}
+            schemaDraft={schemaDraft}
+            schemaCustomKeywordsInput={schemaCustomKeywordsInput}
             onJsonPathChange={setJsonPath}
             onFormat={handleFormat}
             onMinify={handleMinify}
             onValidate={handleValidate}
             onCopy={copyToClipboard}
             onDownload={downloadFile}
+            onImportInputFile={importInputFile}
+            onCsvDelimiterChange={(delimiter) => setCsvOptions((previous) => ({ ...previous, delimiter }))}
+            onCsvHeaderRowChange={(hasHeaderRow) => setCsvOptions((previous) => ({ ...previous, hasHeaderRow }))}
+            onCsvQuoteStrategyChange={(quoteStrategy) => setCsvOptions((previous) => ({ ...previous, quoteStrategy }))}
+            onCsvEscapeStrategyChange={(escapeStrategy) => setCsvOptions((previous) => ({ ...previous, escapeStrategy }))}
+            onSchemaDraftChange={setSchemaDraft}
+            onSchemaCustomKeywordsInputChange={setSchemaCustomKeywordsInput}
           />
-        ) : (
-          <DiffActionBar />
         )}
 
         <main className="flex-1 grid grid-cols-2 bg-[#0F0F11] overflow-hidden">
@@ -102,6 +146,17 @@ export function JsonToolPage() {
               onDiffOriginalChange={setDiffOriginal}
               onDiffModifiedChange={setDiffModified}
             />
+          ) : mode === 'patch' ? (
+            <PatchWorkspace
+              theme={theme}
+              patchBaseInput={patchBaseInput}
+              patchTargetInput={patchTargetInput}
+              patchOperationsInput={patchOperationsInput}
+              output={output}
+              onPatchBaseInputChange={setPatchBaseInput}
+              onPatchTargetInputChange={setPatchTargetInput}
+              onPatchOperationsInputChange={setPatchOperationsInput}
+            />
           ) : mode === 'schemaValidate' ? (
             <SchemaValidateWorkspace
               theme={theme}
@@ -109,6 +164,7 @@ export function JsonToolPage() {
               schemaInput={schemaInput}
               output={output}
               outputLanguage={outputLanguage}
+              schemaValidationIssues={schemaValidationIssues}
               onInputChange={setInput}
               onSchemaInputChange={setSchemaInput}
               onInputValidate={handleEditorValidation}

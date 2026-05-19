@@ -9,6 +9,7 @@ export const MODE_PATHS: Record<Mode, string> = {
   schemaValidate: '/schema-validate',
   convertCsv: '/csv',
   escape: '/escape',
+  patch: '/patch',
 };
 
 const PATH_TO_MODE: Record<string, Mode> = Object.entries(MODE_PATHS).reduce(

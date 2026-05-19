@@ -1,6 +1,24 @@
 import Ajv, { type ErrorObject } from 'ajv';
+import Ajv2019 from 'ajv/dist/2019';
+import Ajv2020 from 'ajv/dist/2020';
+import { applyPatch, compare, type Operation, validate as validatePatch } from 'fast-json-patch';
+import type { CsvOptions, SchemaDraft } from './types';
 
 type JsonSchema = Record<string, unknown>;
+
+const DEFAULT_CSV_OPTIONS: CsvOptions = {
+  delimiter: ',',
+  hasHeaderRow: true,
+  quoteStrategy: 'auto',
+  escapeStrategy: 'double',
+};
+
+function normalizeCsvOptions(options?: Partial<CsvOptions>): CsvOptions {
+  return {
+    ...DEFAULT_CSV_OPTIONS,
+    ...options,
+  };
+}
 
 function getPrimitiveType(value: unknown): string {
   if (value === null) return 'null';
@@ -66,17 +84,55 @@ export function generateJsonSchemaFromSample(sample: unknown): JsonSchema {
   };
 }
 
-export function validateJsonBySchema(data: unknown, schema: JsonSchema): { valid: boolean; errors: ErrorObject[] } {
-  const ajv = new Ajv({ allErrors: true, strict: false });
+function createAjvByDraft(draft: SchemaDraft): Ajv {
+  if (draft === '2019-09') {
+    return new Ajv2019({ allErrors: true, strict: false });
+  }
+
+  if (draft === '2020-12') {
+    return new Ajv2020({ allErrors: true, strict: false });
+  }
+
+  return new Ajv({ allErrors: true, strict: false });
+}
+
+function addCustomKeywords(ajv: Ajv, keywords: string[]): void {
+  for (const keyword of keywords) {
+    const normalized = keyword.trim();
+    if (!normalized || ajv.getKeyword(normalized)) {
+      continue;
+    }
+
+    ajv.addKeyword({
+      keyword: normalized,
+      schemaType: ['boolean', 'number', 'string', 'object', 'array', 'null'],
+      errors: false,
+      validate: () => true,
+    });
+  }
+}
+
+export function validateJsonBySchema(
+  data: unknown,
+  schema: JsonSchema,
+  options?: {
+    draft?: SchemaDraft;
+    customKeywords?: string[];
+  },
+): { valid: boolean; errors: ErrorObject[] } {
+  const ajv = createAjvByDraft(options?.draft ?? 'draft-07');
+  addCustomKeywords(ajv, options?.customKeywords ?? []);
+
   const validate = ajv.compile(schema);
   const valid = validate(data);
+
   return {
     valid: Boolean(valid),
     errors: (validate.errors ?? []) as ErrorObject[],
   };
 }
 
-function parseCsvRow(row: string): string[] {
+function parseCsvRow(row: string, delimiter: string): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -84,6 +140,12 @@ function parseCsvRow(row: string): string[] {
   for (let i = 0; i < row.length; i += 1) {
     const char = row[i];
     const next = row[i + 1];
+
+    if (char === '\\' && inQuotes && next === '"') {
+      current += '"';
+      i += 1;
+      continue;
+    }
 
     if (char === '"') {
       if (inQuotes && next === '"') {
@@ -95,7 +157,7 @@ function parseCsvRow(row: string): string[] {
       continue;
     }
 
-    if (char === ',' && !inQuotes) {
+    if (char === delimiter && !inQuotes) {
       result.push(current);
       current = '';
       continue;
@@ -116,6 +178,12 @@ function splitCsvLines(input: string): string[] {
   for (let i = 0; i < input.length; i += 1) {
     const char = input[i];
     const next = input[i + 1];
+
+    if (char === '\\' && inQuotes && next === '"') {
+      current += '\\"';
+      i += 1;
+      continue;
+    }
 
     if (char === '"') {
       if (inQuotes && next === '"') {
@@ -162,7 +230,7 @@ function parseCellValue(raw: string): unknown {
   return raw;
 }
 
-function escapeCsvCell(value: unknown): string {
+function escapeCsvCell(value: unknown, options: CsvOptions): string {
   const str =
     value === null || value === undefined
       ? ''
@@ -172,14 +240,24 @@ function escapeCsvCell(value: unknown): string {
           ? JSON.stringify(value)
           : String(value);
 
-  if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
-    return `"${str.replace(/"/g, '""')}"`;
+  const mustQuote =
+    options.quoteStrategy === 'always' ||
+    str.includes(options.delimiter) ||
+    str.includes('"') ||
+    str.includes('\n') ||
+    str.includes('\r');
+
+  if (!mustQuote) {
+    return str;
   }
 
-  return str;
+  const escaped = options.escapeStrategy === 'backslash' ? str.replace(/"/g, '\\"') : str.replace(/"/g, '""');
+
+  return `"${escaped}"`;
 }
 
-export function convertJsonToCsv(value: unknown): string {
+export function convertJsonToCsv(value: unknown, options?: Partial<CsvOptions>): string {
+  const normalizedOptions = normalizeCsvOptions(options);
   const rows = Array.isArray(value) ? value : [value];
 
   if (rows.length === 0) {
@@ -194,29 +272,42 @@ export function convertJsonToCsv(value: unknown): string {
       }, new Set<string>()),
     );
 
-    const header = keys.map((key) => escapeCsvCell(key)).join(',');
     const body = rows.map((row) => {
       const record = row as Record<string, unknown>;
-      return keys.map((key) => escapeCsvCell(record[key])).join(',');
+      return keys.map((key) => escapeCsvCell(record[key], normalizedOptions)).join(normalizedOptions.delimiter);
     });
 
+    if (!normalizedOptions.hasHeaderRow) {
+      return body.join('\n');
+    }
+
+    const header = keys.map((key) => escapeCsvCell(key, normalizedOptions)).join(normalizedOptions.delimiter);
     return [header, ...body].join('\n');
   }
 
   if (rows.every((row) => Array.isArray(row))) {
     return rows
-      .map((row) => (row as unknown[]).map((cell) => escapeCsvCell(cell)).join(','))
+      .map((row) => (row as unknown[]).map((cell) => escapeCsvCell(cell, normalizedOptions)).join(normalizedOptions.delimiter))
       .join('\n');
   }
 
-  return rows.map((row) => escapeCsvCell(row)).join('\n');
+  return rows.map((row) => escapeCsvCell(row, normalizedOptions)).join('\n');
 }
 
-export function convertCsvToJson(csvText: string): unknown {
+export function convertCsvToJson(csvText: string, options?: Partial<CsvOptions>): unknown {
+  const normalizedOptions = normalizeCsvOptions(options);
   const lines = splitCsvLines(csvText);
-  if (lines.length === 0) return [];
 
-  const parsedRows = lines.map(parseCsvRow);
+  if (lines.length === 0) {
+    return [];
+  }
+
+  const parsedRows = lines.map((line) => parseCsvRow(line, normalizedOptions.delimiter));
+
+  if (!normalizedOptions.hasHeaderRow) {
+    return parsedRows.map((row) => row.map((cell) => parseCellValue(cell)));
+  }
+
   const header = parsedRows[0];
   const bodyRows = parsedRows.slice(1);
 
@@ -269,4 +360,19 @@ export function escapeOrUnescapeJsonString(input: string): {
       message: 'Escaped text to JSON string',
     };
   }
+}
+
+export function generateJsonPatchOperations(original: unknown, modified: unknown): Operation[] {
+  return compare(original as object, modified as object);
+}
+
+export function applyJsonPatchOperations(original: unknown, operations: Operation[]): unknown {
+  const validationError = validatePatch(operations, original);
+  if (validationError) {
+    throw new Error(validationError.message || 'Invalid JSON Patch operations');
+  }
+
+  const clone = JSON.parse(JSON.stringify(original));
+  const result = applyPatch(clone, operations, true, false);
+  return result.newDocument;
 }

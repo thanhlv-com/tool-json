@@ -10,6 +10,7 @@ import {
   SearchCode,
   SplitSquareHorizontal,
   Sun,
+  Wand2,
 } from 'lucide-react';
 import type { Mode, ThemeMode } from './types';
 
@@ -104,6 +105,14 @@ export function TopNavigation({
             }`}
           >
             <Link2 className="w-3.5 h-3.5" /> Escape
+          </button>
+          <button
+            onClick={() => onNavigateMode('patch')}
+            className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+              mode === 'patch' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+            }`}
+          >
+            <Wand2 className="w-3.5 h-3.5" /> Patch
           </button>
         </nav>
       </div>

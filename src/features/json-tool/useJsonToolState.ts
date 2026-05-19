@@ -1,11 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { JSONPath } from 'jsonpath-plus';
 import YAML from 'yaml';
-import type { ConvertSourceFormat, ErrorStatus, Mode, OutputLanguage, ProcessAction, ThemeMode } from './types';
+import type {
+  ConvertSourceFormat,
+  CsvOptions,
+  ErrorStatus,
+  Mode,
+  OutputLanguage,
+  ProcessAction,
+  SchemaDraft,
+  SchemaValidationIssue,
+  ThemeMode,
+} from './types';
 import {
+  applyJsonPatchOperations,
   convertCsvToJson,
   convertJsonToCsv,
   escapeOrUnescapeJsonString,
+  generateJsonPatchOperations,
   generateJsonSchemaFromSample,
   validateJsonBySchema,
 } from './utils';
@@ -17,13 +29,50 @@ type MonacoMarker = {
   message: string;
 };
 
+const STORAGE_KEY = 'json-dev-tool.state.v2';
+
 const DEFAULT_JSON_INPUT =
   '{\n  "tool": "JSON Dev Tool",\n  "version": 1.0,\n  "features": [\n    "Format",\n    "Validate",\n    "Diff",\n    "Query",\n    "YAML"\n  ],\n  "is_awesome": true\n}';
 const DEFAULT_SCHEMA_INPUT =
   '{\n  "type": "object",\n  "properties": {\n    "tool": { "type": "string" },\n    "version": { "type": "number" }\n  },\n  "required": ["tool", "version"],\n  "additionalProperties": true\n}';
-type InputMode = Exclude<Mode, 'diff'>;
+const DEFAULT_PATCH_BASE_INPUT = '{\n  "status": "ok",\n  "code": 200\n}';
+const DEFAULT_PATCH_TARGET_INPUT = '{\n  "status": "error",\n  "code": 500,\n  "message": "Failed"\n}';
+const DEFAULT_PATCH_OPERATIONS_INPUT =
+  '[\n  {\n    "op": "replace",\n    "path": "/status",\n    "value": "error"\n  },\n  {\n    "op": "replace",\n    "path": "/code",\n    "value": 500\n  }\n]';
+
+const DEFAULT_CSV_OPTIONS: CsvOptions = {
+  delimiter: ',',
+  hasHeaderRow: true,
+  quoteStrategy: 'auto',
+  escapeStrategy: 'double',
+};
+
+type InputMode = Exclude<Mode, 'diff' | 'patch'>;
 
 const INPUT_MODES: InputMode[] = ['format', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape'];
+const ALL_MODES: Mode[] = ['format', 'diff', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape', 'patch'];
+
+type PersistedState = {
+  version: 2;
+  sharedInput: string;
+  inputByMode: Record<InputMode, string>;
+  syncInputAcrossModes: boolean;
+  schemaInput: string;
+  output: string;
+  outputLanguage: OutputLanguage;
+  convertSourceFormat: ConvertSourceFormat;
+  diffOriginal: string;
+  diffModified: string;
+  jsonPath: string;
+  theme: ThemeMode;
+  csvOptions: CsvOptions;
+  schemaDraft: SchemaDraft;
+  schemaCustomKeywordsInput: string;
+  patchBaseInput: string;
+  patchTargetInput: string;
+  patchOperationsInput: string;
+  lastMode: Mode;
+};
 
 function createDefaultInputByMode(value: string): Record<InputMode, string> {
   return INPUT_MODES.reduce(
@@ -35,31 +84,106 @@ function createDefaultInputByMode(value: string): Record<InputMode, string> {
   );
 }
 
+function createDefaultPersistedState(): PersistedState {
+  return {
+    version: 2,
+    sharedInput: DEFAULT_JSON_INPUT,
+    inputByMode: createDefaultInputByMode(DEFAULT_JSON_INPUT),
+    syncInputAcrossModes: true,
+    schemaInput: DEFAULT_SCHEMA_INPUT,
+    output: '',
+    outputLanguage: 'json',
+    convertSourceFormat: null,
+    diffOriginal: DEFAULT_PATCH_BASE_INPUT,
+    diffModified: DEFAULT_PATCH_TARGET_INPUT,
+    jsonPath: '$.features',
+    theme: 'vs-dark',
+    csvOptions: DEFAULT_CSV_OPTIONS,
+    schemaDraft: 'draft-07',
+    schemaCustomKeywordsInput: '',
+    patchBaseInput: DEFAULT_PATCH_BASE_INPUT,
+    patchTargetInput: DEFAULT_PATCH_TARGET_INPUT,
+    patchOperationsInput: DEFAULT_PATCH_OPERATIONS_INPUT,
+    lastMode: 'format',
+  };
+}
+
 function isLikelyJsonInput(value: string): boolean {
   const trimmed = value.trim();
   return trimmed.startsWith('{') || trimmed.startsWith('[');
 }
 
+function loadPersistedState(): PersistedState {
+  const defaults = createDefaultPersistedState();
+
+  if (typeof window === 'undefined') {
+    return defaults;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PersistedState>;
+    const inputByMode = {
+      ...defaults.inputByMode,
+      ...(parsed.inputByMode ?? {}),
+    };
+    const csvOptions = {
+      ...defaults.csvOptions,
+      ...(parsed.csvOptions ?? {}),
+    };
+
+    const lastMode = parsed.lastMode && ALL_MODES.includes(parsed.lastMode) ? parsed.lastMode : 'format';
+
+    return {
+      ...defaults,
+      ...parsed,
+      inputByMode,
+      csvOptions,
+      version: 2,
+      lastMode,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+export function getPersistedLastMode(): Mode | null {
+  const persisted = loadPersistedState();
+  return persisted.lastMode ?? null;
+}
+
 export function useJsonToolState(mode: Mode) {
-  const [sharedInput, setSharedInput] = useState<string>(DEFAULT_JSON_INPUT);
-  const [inputByMode, setInputByMode] = useState<Record<InputMode, string>>(() => createDefaultInputByMode(DEFAULT_JSON_INPUT));
-  const [syncInputAcrossModes, setSyncInputAcrossModesState] = useState<boolean>(true);
-  const [schemaInput, setSchemaInput] = useState<string>(DEFAULT_SCHEMA_INPUT);
-  const [output, setOutput] = useState<string>('');
-  const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>('json');
-  const [convertSourceFormat, setConvertSourceFormat] = useState<ConvertSourceFormat>(null);
-  const [diffOriginal, setDiffOriginal] = useState<string>('{\n  "status": "ok",\n  "code": 200\n}');
-  const [diffModified, setDiffModified] = useState<string>(
-    '{\n  "status": "error",\n  "code": 500,\n  "message": "Failed"\n}',
-  );
-  const [jsonPath, setJsonPath] = useState<string>('$.features');
-  const [theme, setTheme] = useState<ThemeMode>('vs-dark');
+  const initialState = useMemo(() => loadPersistedState(), []);
+
+  const [sharedInput, setSharedInput] = useState<string>(initialState.sharedInput);
+  const [inputByMode, setInputByMode] = useState<Record<InputMode, string>>(initialState.inputByMode);
+  const [syncInputAcrossModes, setSyncInputAcrossModesState] = useState<boolean>(initialState.syncInputAcrossModes);
+  const [schemaInput, setSchemaInput] = useState<string>(initialState.schemaInput);
+  const [output, setOutput] = useState<string>(initialState.output);
+  const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>(initialState.outputLanguage);
+  const [convertSourceFormat, setConvertSourceFormat] = useState<ConvertSourceFormat>(initialState.convertSourceFormat);
+  const [diffOriginal, setDiffOriginal] = useState<string>(initialState.diffOriginal);
+  const [diffModified, setDiffModified] = useState<string>(initialState.diffModified);
+  const [jsonPath, setJsonPath] = useState<string>(initialState.jsonPath);
+  const [theme, setTheme] = useState<ThemeMode>(initialState.theme);
   const [errorStatus, setErrorStatus] = useState<ErrorStatus>(null);
+  const [csvOptions, setCsvOptions] = useState<CsvOptions>(initialState.csvOptions);
+  const [schemaDraft, setSchemaDraft] = useState<SchemaDraft>(initialState.schemaDraft);
+  const [schemaCustomKeywordsInput, setSchemaCustomKeywordsInput] = useState<string>(initialState.schemaCustomKeywordsInput);
+  const [schemaValidationIssues, setSchemaValidationIssues] = useState<SchemaValidationIssue[]>([]);
+
+  const [patchBaseInput, setPatchBaseInput] = useState<string>(initialState.patchBaseInput);
+  const [patchTargetInput, setPatchTargetInput] = useState<string>(initialState.patchTargetInput);
+  const [patchOperationsInput, setPatchOperationsInput] = useState<string>(initialState.patchOperationsInput);
 
   const inputEditorRef = useRef<any>(null);
   const outputEditorRef = useRef<any>(null);
   const schemaEditorRef = useRef<any>(null);
-  const inputMode: InputMode = mode === 'diff' ? 'format' : mode;
+  const inputMode: InputMode = mode === 'diff' || mode === 'patch' ? 'format' : mode;
   const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
   const csvInputLooksLikeJson = mode === 'convertCsv' && isLikelyJsonInput(input);
 
@@ -107,6 +231,11 @@ export function useJsonToolState(mode: Mode) {
   const processJson = useCallback(
     (action: ProcessAction = 'format', customInput = input) => {
       setErrorStatus(null);
+
+      if (mode !== 'schemaValidate') {
+        setSchemaValidationIssues([]);
+      }
+
       if (!customInput.trim()) {
         setOutput('');
         return;
@@ -116,6 +245,7 @@ export function useJsonToolState(mode: Mode) {
         if (mode === 'convert') {
           let parsed: any;
           let sourceFormat: ConvertSourceFormat = null;
+
           try {
             parsed = JSON.parse(customInput);
             sourceFormat = 'json';
@@ -123,6 +253,7 @@ export function useJsonToolState(mode: Mode) {
             parsed = YAML.parse(customInput);
             sourceFormat = 'yaml';
           }
+
           setConvertSourceFormat(sourceFormat);
 
           if (sourceFormat === 'json') {
@@ -167,6 +298,7 @@ export function useJsonToolState(mode: Mode) {
           setConvertSourceFormat(null);
           setOutputLanguage('json');
           const parsed = JSON.parse(customInput);
+
           try {
             const result = JSONPath({ path: jsonPath, json: parsed });
             setOutput(JSON.stringify(result, null, 2));
@@ -174,6 +306,7 @@ export function useJsonToolState(mode: Mode) {
           } catch (error: any) {
             setErrorStatus({ message: `Invalid JSONPath: ${error.message}`, isError: true });
           }
+
           return;
         }
 
@@ -193,17 +326,29 @@ export function useJsonToolState(mode: Mode) {
 
           const data = JSON.parse(customInput);
           const schema = JSON.parse(schemaInput);
-          const result = validateJsonBySchema(data, schema);
+          const customKeywords = schemaCustomKeywordsInput
+            .split(',')
+            .map((keyword) => keyword.trim())
+            .filter(Boolean);
+
+          const result = validateJsonBySchema(data, schema, {
+            draft: schemaDraft,
+            customKeywords,
+          });
+
           const normalizedErrors = result.errors.map((error) => ({
             path: error.instancePath || '/',
             message: error.message ?? 'Validation error',
             keyword: error.keyword,
           }));
 
+          setSchemaValidationIssues(normalizedErrors);
           setOutput(
             JSON.stringify(
               {
                 valid: result.valid,
+                draft: schemaDraft,
+                customKeywords,
                 errorCount: normalizedErrors.length,
                 errors: normalizedErrors,
               },
@@ -211,10 +356,17 @@ export function useJsonToolState(mode: Mode) {
               2,
             ),
           );
-          setErrorStatus({
-            message: result.valid ? 'JSON is valid for schema' : `JSON is invalid (${normalizedErrors.length} errors)`,
-            isError: !result.valid,
-          });
+
+          if (result.valid) {
+            setErrorStatus({ message: `JSON is valid for schema (${schemaDraft})`, isError: false });
+          } else {
+            const firstPath = normalizedErrors[0]?.path ?? '/';
+            setErrorStatus({
+              message: `JSON is invalid (${normalizedErrors.length} errors, first path: ${firstPath})`,
+              isError: true,
+            });
+          }
+
           return;
         }
 
@@ -224,7 +376,7 @@ export function useJsonToolState(mode: Mode) {
 
           if (customInputLooksLikeJson) {
             const parsed = JSON.parse(customInput);
-            const csv = convertJsonToCsv(parsed);
+            const csv = convertJsonToCsv(parsed, csvOptions);
             setOutput(csv);
             setOutputLanguage('plaintext');
             setErrorStatus({
@@ -232,15 +384,18 @@ export function useJsonToolState(mode: Mode) {
               isError: false,
             });
           } else {
-            const json = convertCsvToJson(customInput);
+            const json = convertCsvToJson(customInput, csvOptions);
             setOutputLanguage('json');
+
             if (action === 'minify') {
               setOutput(JSON.stringify(json));
             } else {
               setOutput(JSON.stringify(json, null, 2));
             }
+
             setErrorStatus({ message: 'Converted CSV to JSON', isError: false });
           }
+
           return;
         }
 
@@ -253,9 +408,15 @@ export function useJsonToolState(mode: Mode) {
           return;
         }
 
+        if (mode === 'patch' || mode === 'diff') {
+          return;
+        }
+
         setConvertSourceFormat(null);
         setOutputLanguage('json');
+
         const parsed = JSON.parse(customInput);
+
         if (action === 'minify') {
           setOutput(JSON.stringify(parsed));
           setErrorStatus({ message: 'Valid JSON (Minified)', isError: false });
@@ -271,43 +432,103 @@ export function useJsonToolState(mode: Mode) {
         setOutput(JSON.stringify(parsed, null, 2));
         setErrorStatus({ message: 'Valid JSON (Formatted)', isError: false });
       } catch (error: any) {
+        if (mode === 'schemaValidate') {
+          setSchemaValidationIssues([]);
+        }
         setErrorStatus({ message: `Parse Error: ${error.message}`, isError: true });
       }
     },
-    [input, jsonPath, mode, schemaInput],
+    [csvOptions, input, jsonPath, mode, schemaCustomKeywordsInput, schemaDraft, schemaInput],
   );
 
+  const handleGeneratePatch = useCallback(() => {
+    try {
+      const original = JSON.parse(patchBaseInput);
+      const modified = JSON.parse(patchTargetInput);
+      const operations = generateJsonPatchOperations(original, modified);
+
+      setPatchOperationsInput(JSON.stringify(operations, null, 2));
+      setOutput(JSON.stringify(operations, null, 2));
+      setOutputLanguage('json');
+      setErrorStatus({ message: `Generated ${operations.length} patch operations`, isError: false });
+    } catch (error: any) {
+      setErrorStatus({ message: `Patch generate error: ${error.message}`, isError: true });
+    }
+  }, [patchBaseInput, patchTargetInput]);
+
+  const handleApplyPatch = useCallback(() => {
+    try {
+      const original = JSON.parse(patchBaseInput);
+      const operations = JSON.parse(patchOperationsInput);
+
+      if (!Array.isArray(operations)) {
+        throw new Error('Patch operations must be an array');
+      }
+
+      const patched = applyJsonPatchOperations(original, operations as any[]);
+      setOutput(JSON.stringify(patched, null, 2));
+      setOutputLanguage('json');
+      setErrorStatus({ message: `Applied ${operations.length} patch operations`, isError: false });
+    } catch (error: any) {
+      setErrorStatus({ message: `Patch apply error: ${error.message}`, isError: true });
+    }
+  }, [patchBaseInput, patchOperationsInput]);
+
   useEffect(() => {
-    if (mode !== 'diff') {
+    if (mode !== 'patch') {
+      return;
+    }
+
+    setOutput(patchOperationsInput);
+    setOutputLanguage('json');
+    setErrorStatus(null);
+  }, [mode, patchOperationsInput]);
+
+  useEffect(() => {
+    if (mode !== 'diff' && mode !== 'patch') {
       processJson();
     }
-  }, [mode, processJson, jsonPath, schemaInput]);
+  }, [mode, processJson, jsonPath, schemaInput, csvOptions, schemaDraft, schemaCustomKeywordsInput]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
-        processJson('validate');
+        if (mode === 'patch') {
+          handleGeneratePatch();
+        } else {
+          processJson('validate');
+        }
       }
 
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'f') {
         event.preventDefault();
-        processJson('format');
+        if (mode !== 'patch') {
+          processJson('format');
+        }
       }
 
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'm') {
         event.preventDefault();
-        processJson('minify');
+        if (mode !== 'patch') {
+          processJson('minify');
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [processJson]);
+  }, [handleGeneratePatch, mode, processJson]);
 
   const handleEditorValidation = useCallback(
     (markers: MonacoMarker[]) => {
-      if (mode === 'diff' || mode === 'convert' || (mode === 'convertCsv' && !csvInputLooksLikeJson) || mode === 'escape') {
+      if (
+        mode === 'diff' ||
+        mode === 'patch' ||
+        mode === 'convert' ||
+        (mode === 'convertCsv' && !csvInputLooksLikeJson) ||
+        mode === 'escape'
+      ) {
         return;
       }
 
@@ -356,8 +577,22 @@ export function useJsonToolState(mode: Mode) {
     }
   }, []);
 
-  const copyToClipboard = useCallback((text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setErrorStatus((previous) => {
+        if (previous?.isError) {
+          return previous;
+        }
+
+        return {
+          message: 'Copied to clipboard',
+          isError: false,
+        };
+      });
+    } catch {
+      setErrorStatus({ message: 'Clipboard permission denied', isError: true });
+    }
   }, []);
 
   const downloadFile = useCallback((content: string, filename: string) => {
@@ -369,6 +604,98 @@ export function useJsonToolState(mode: Mode) {
     anchor.click();
     URL.revokeObjectURL(url);
   }, []);
+
+  const importInputFile = useCallback(
+    async (file: File) => {
+      try {
+        const text = await file.text();
+        setInput(text);
+        setErrorStatus({ message: `Loaded input from ${file.name}`, isError: false });
+      } catch {
+        setErrorStatus({ message: `Failed to read ${file.name}`, isError: true });
+      }
+    },
+    [setInput],
+  );
+
+  const importPatchBaseFile = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      setPatchBaseInput(text);
+      setErrorStatus({ message: `Loaded base from ${file.name}`, isError: false });
+    } catch {
+      setErrorStatus({ message: `Failed to read ${file.name}`, isError: true });
+    }
+  }, []);
+
+  const importPatchTargetFile = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      setPatchTargetInput(text);
+      setErrorStatus({ message: `Loaded target from ${file.name}`, isError: false });
+    } catch {
+      setErrorStatus({ message: `Failed to read ${file.name}`, isError: true });
+    }
+  }, []);
+
+  const importPatchOperationsFile = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      setPatchOperationsInput(text);
+      setErrorStatus({ message: `Loaded patch from ${file.name}`, isError: false });
+    } catch {
+      setErrorStatus({ message: `Failed to read ${file.name}`, isError: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const nextState: PersistedState = {
+      version: 2,
+      sharedInput,
+      inputByMode,
+      syncInputAcrossModes,
+      schemaInput,
+      output,
+      outputLanguage,
+      convertSourceFormat,
+      diffOriginal,
+      diffModified,
+      jsonPath,
+      theme,
+      csvOptions,
+      schemaDraft,
+      schemaCustomKeywordsInput,
+      patchBaseInput,
+      patchTargetInput,
+      patchOperationsInput,
+      lastMode: mode,
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+  }, [
+    convertSourceFormat,
+    csvOptions,
+    diffModified,
+    diffOriginal,
+    inputByMode,
+    jsonPath,
+    mode,
+    output,
+    outputLanguage,
+    patchBaseInput,
+    patchOperationsInput,
+    patchTargetInput,
+    schemaCustomKeywordsInput,
+    schemaDraft,
+    schemaInput,
+    sharedInput,
+    syncInputAcrossModes,
+    theme,
+  ]);
 
   return {
     input,
@@ -390,6 +717,19 @@ export function useJsonToolState(mode: Mode) {
     setTheme,
     csvInputLooksLikeJson,
     errorStatus,
+    csvOptions,
+    setCsvOptions,
+    schemaDraft,
+    setSchemaDraft,
+    schemaCustomKeywordsInput,
+    setSchemaCustomKeywordsInput,
+    schemaValidationIssues,
+    patchBaseInput,
+    setPatchBaseInput,
+    patchTargetInput,
+    setPatchTargetInput,
+    patchOperationsInput,
+    setPatchOperationsInput,
     inputEditorRef,
     outputEditorRef,
     schemaEditorRef,
@@ -398,9 +738,15 @@ export function useJsonToolState(mode: Mode) {
     handleFormat,
     handleMinify,
     handleValidate,
+    handleGeneratePatch,
+    handleApplyPatch,
     handleExpandAll,
     handleCollapseAll,
     copyToClipboard,
     downloadFile,
+    importInputFile,
+    importPatchBaseFile,
+    importPatchTargetFile,
+    importPatchOperationsFile,
   };
 }

@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react';
-import type { OutputLanguage, ThemeMode } from './types';
+import type { OutputLanguage, SchemaValidationIssue, ThemeMode } from './types';
 
 type SchemaValidateWorkspaceProps = {
   theme: ThemeMode;
@@ -7,6 +7,7 @@ type SchemaValidateWorkspaceProps = {
   schemaInput: string;
   output: string;
   outputLanguage: OutputLanguage;
+  schemaValidationIssues: SchemaValidationIssue[];
   onInputChange: (value: string) => void;
   onSchemaInputChange: (value: string) => void;
   onInputValidate: (markers: any[]) => void;
@@ -22,6 +23,7 @@ export function SchemaValidateWorkspace({
   schemaInput,
   output,
   outputLanguage,
+  schemaValidationIssues,
   onInputChange,
   onSchemaInputChange,
   onInputValidate,
@@ -31,7 +33,7 @@ export function SchemaValidateWorkspace({
   onOutputEditorMount,
 }: SchemaValidateWorkspaceProps) {
   return (
-    <div className="col-span-2 grid grid-cols-2 grid-rows-[1fr_220px]">
+    <div className="col-span-2 grid grid-cols-2 grid-rows-[1fr_260px]">
       <section className="flex flex-col border-r border-b border-[#262626]">
         <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
           <span>JSON_DATA</span>
@@ -88,31 +90,53 @@ export function SchemaValidateWorkspace({
         </div>
       </section>
 
-      <section className="col-span-2 flex flex-col">
-        <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
-          <span className="text-blue-400 border-b border-blue-500 pb-1">VALIDATION_RESULT</span>
-          <span>READ ONLY</span>
+      <section className="col-span-2 flex border-[#262626]">
+        <div className="flex-1 flex flex-col border-r border-[#262626]">
+          <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+            <span className="text-blue-400 border-b border-blue-500 pb-1">VALIDATION_RESULT</span>
+            <span>READ ONLY</span>
+          </div>
+          <div className="flex-1 bg-[#0F0F11]">
+            <Editor
+              height="100%"
+              language={outputLanguage === 'plaintext' ? 'plaintext' : outputLanguage}
+              theme={theme}
+              value={output}
+              onMount={onOutputEditorMount}
+              options={{
+                readOnly: true,
+                minimap: { enabled: false },
+                fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+                fontSize: 13,
+                lineNumbers: 'on',
+                folding: true,
+                wordWrap: 'on',
+                scrollBeyondLastLine: false,
+                padding: { top: 12 },
+              }}
+            />
+          </div>
         </div>
-        <div className="flex-1 bg-[#0F0F11]">
-          <Editor
-            height="100%"
-            language={outputLanguage === 'plaintext' ? 'plaintext' : outputLanguage}
-            theme={theme}
-            value={output}
-            onMount={onOutputEditorMount}
-            options={{
-              readOnly: true,
-              minimap: { enabled: false },
-              fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-              fontSize: 13,
-              lineNumbers: 'on',
-              folding: true,
-              wordWrap: 'on',
-              scrollBeyondLastLine: false,
-              padding: { top: 12 },
-            }}
-          />
-        </div>
+
+        <aside className="w-[38%] min-w-[320px] flex flex-col bg-[#121214]">
+          <div className="flex items-center justify-between px-4 py-2 text-[10px] font-mono text-[#808080] border-b border-[#262626]">
+            <span>ERROR_PANEL</span>
+            <span>{schemaValidationIssues.length} ISSUES</span>
+          </div>
+          <div className="overflow-auto p-3 space-y-2">
+            {schemaValidationIssues.length === 0 ? (
+              <div className="text-xs text-[#6F7780]">No validation issues.</div>
+            ) : (
+              schemaValidationIssues.map((issue, index) => (
+                <div key={`${issue.path}-${issue.keyword}-${index}`} className="rounded border border-[#2F2F31] bg-[#17171A] p-2">
+                  <div className="text-[10px] font-mono text-red-400">{issue.path}</div>
+                  <div className="text-xs text-[#D0D0D0] mt-1">{issue.message}</div>
+                  <div className="text-[10px] text-[#7D8590] mt-1">keyword: {issue.keyword}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
       </section>
     </div>
   );
