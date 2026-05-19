@@ -59,6 +59,7 @@ type PersistedState = {
   sharedInput: string;
   inputByMode: Record<InputMode, string>;
   syncInputAcrossModes: boolean;
+  showArrayHints: boolean;
   schemaInput: string;
   output: string;
   outputLanguage: OutputLanguage;
@@ -92,6 +93,7 @@ function createDefaultPersistedState(): PersistedState {
     sharedInput: DEFAULT_JSON_INPUT,
     inputByMode: createDefaultInputByMode(DEFAULT_JSON_INPUT),
     syncInputAcrossModes: true,
+    showArrayHints: true,
     schemaInput: DEFAULT_SCHEMA_INPUT,
     output: '',
     outputLanguage: 'json',
@@ -164,6 +166,7 @@ export function useJsonToolState(mode: Mode) {
   const [sharedInput, setSharedInput] = useState<string>(initialState.sharedInput);
   const [inputByMode, setInputByMode] = useState<Record<InputMode, string>>(initialState.inputByMode);
   const [syncInputAcrossModes, setSyncInputAcrossModesState] = useState<boolean>(initialState.syncInputAcrossModes);
+  const [showArrayHints, setShowArrayHints] = useState<boolean>(initialState.showArrayHints);
   const [schemaInput, setSchemaInput] = useState<string>(initialState.schemaInput);
   const [output, setOutput] = useState<string>(initialState.output);
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>(initialState.outputLanguage);
@@ -727,6 +730,7 @@ export function useJsonToolState(mode: Mode) {
       sharedInput,
       inputByMode,
       syncInputAcrossModes,
+      showArrayHints,
       schemaInput,
       output,
       outputLanguage,
@@ -761,6 +765,7 @@ export function useJsonToolState(mode: Mode) {
     schemaCustomKeywordsInput,
     schemaDraft,
     schemaInput,
+    showArrayHints,
     sharedInput,
     syncInputAcrossModes,
     theme,
@@ -771,6 +776,8 @@ export function useJsonToolState(mode: Mode) {
     setInput,
     syncInputAcrossModes,
     setSyncInputAcrossModes,
+    showArrayHints,
+    setShowArrayHints,
     schemaInput,
     setSchemaInput,
     output,

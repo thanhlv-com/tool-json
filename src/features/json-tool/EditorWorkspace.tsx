@@ -8,10 +8,11 @@ type StructuredLanguage = 'json' | 'yaml' | 'plaintext';
 
 type MonacoEditor = any;
 
-type ArrayHint = {
+type ValueHint = {
   offset: number;
   path: string;
-  length: number;
+  typeLabel: string;
+  detail?: string;
 };
 
 type ArrayHintWidget = {
@@ -46,7 +47,59 @@ function getPairKey(pairKey: any): string {
   return String(pairKey?.value ?? pairKey?.toString?.() ?? 'unknown');
 }
 
-function collectArrayHints(content: string, language: StructuredLanguage): ArrayHint[] {
+function inferScalarType(node: any): string {
+  const value = node?.toJSON?.() ?? node?.value;
+
+  if (value === null) {
+    return 'null';
+  }
+
+  if (typeof value === 'string') {
+    return 'string';
+  }
+
+  if (typeof value === 'number') {
+    return Number.isInteger(value) ? 'integer' : 'number';
+  }
+
+  if (typeof value === 'boolean') {
+    return 'boolean';
+  }
+
+  return 'unknown';
+}
+
+function inferNodeType(node: any): string {
+  if (!node) {
+    return 'unknown';
+  }
+
+  if (YAML.isSeq(node)) {
+    return 'array';
+  }
+
+  if (YAML.isMap(node)) {
+    return 'object';
+  }
+
+  return inferScalarType(node);
+}
+
+function inferArrayElementType(items: any[]): string {
+  if (items.length === 0) {
+    return 'empty';
+  }
+
+  const uniqueTypes = Array.from(new Set(items.map((item) => inferNodeType(item)))).sort();
+
+  if (uniqueTypes.length === 1) {
+    return uniqueTypes[0];
+  }
+
+  return `mixed:${uniqueTypes.join('|')}`;
+}
+
+function collectValueHints(content: string, language: StructuredLanguage): ValueHint[] {
   if (language === 'plaintext' || !content.trim()) {
     return [];
   }
@@ -61,7 +114,7 @@ function collectArrayHints(content: string, language: StructuredLanguage): Array
       return [];
     }
 
-    const hints: ArrayHint[] = [];
+    const hints: ValueHint[] = [];
 
     const visit = (node: any, path: string) => {
       if (!node) {
@@ -69,10 +122,12 @@ function collectArrayHints(content: string, language: StructuredLanguage): Array
       }
 
       if (YAML.isSeq(node)) {
+        const elementType = inferArrayElementType(node.items);
         hints.push({
           offset: Array.isArray(node.range) ? node.range[0] : 0,
           path,
-          length: node.items.length,
+          typeLabel: `array<${elementType}>`,
+          detail: `items: ${node.items.length}`,
         });
 
         node.items.forEach((item: any, index: number) => {
@@ -81,13 +136,25 @@ function collectArrayHints(content: string, language: StructuredLanguage): Array
         return;
       }
 
-      if (!YAML.isMap(node)) {
+      if (YAML.isMap(node)) {
+        hints.push({
+          offset: Array.isArray(node.range) ? node.range[0] : 0,
+          path,
+          typeLabel: 'object',
+          detail: `keys: ${node.items.length}`,
+        });
+
+        node.items.forEach((pair: any) => {
+          const key = getPairKey(pair?.key);
+          visit(pair?.value, appendPath(path, key));
+        });
         return;
       }
 
-      node.items.forEach((pair: any) => {
-        const key = getPairKey(pair?.key);
-        visit(pair?.value, appendPath(path, key));
+      hints.push({
+        offset: Array.isArray(node.range) ? node.range[0] : 0,
+        path,
+        typeLabel: inferScalarType(node),
       });
     };
 
@@ -124,14 +191,14 @@ function applyArrayCountWidgets(
 
   removeArrayHintWidgets(editor, previousWidgets);
 
-  const hints = collectArrayHints(model.getValue(), language);
+  const hints = collectValueHints(model.getValue(), language);
   const widgets: ArrayHintWidget[] = hints.map((hint, index) => {
     const lineNumber = model.getPositionAt(Math.max(0, hint.offset)).lineNumber;
     const maxColumn = model.getLineMaxColumn(lineNumber);
     const id = `array-hint-${language}-${lineNumber}-${index}`;
     const domNode = document.createElement('span');
     domNode.className = 'json-array-count-widget';
-    domNode.textContent = ` ${hint.path} items: ${hint.length}`;
+    domNode.textContent = ` ${hint.path} type: ${hint.typeLabel}${hint.detail ? ` ${hint.detail}` : ''}`;
 
     const widget: ArrayHintWidget = {
       id,
@@ -161,6 +228,7 @@ type EditorWorkspaceProps = {
   output: string;
   outputLanguage: OutputLanguage;
   csvInputLooksLikeJson: boolean;
+  showArrayHints: boolean;
   onInputChange: (value: string) => void;
   onInputValidate: (markers: any[]) => void;
   onExpandAll: () => void;
@@ -176,6 +244,7 @@ export function EditorWorkspace({
   output,
   outputLanguage,
   csvInputLooksLikeJson,
+  showArrayHints,
   onInputChange,
   onInputValidate,
   onExpandAll,
@@ -221,20 +290,32 @@ export function EditorWorkspace({
   const outputMonacoLanguage: StructuredLanguage = outputLanguage === 'plaintext' ? 'plaintext' : outputLanguage;
 
   const refreshInputDecorations = useCallback(() => {
+    if (!showArrayHints) {
+      removeArrayHintWidgets(inputEditorRef.current, inputWidgetsRef.current);
+      inputWidgetsRef.current = [];
+      return;
+    }
+
     inputWidgetsRef.current = applyArrayCountWidgets(
       inputEditorRef.current,
       inputWidgetsRef.current,
       inputLanguage,
     );
-  }, [inputLanguage]);
+  }, [inputLanguage, showArrayHints]);
 
   const refreshOutputDecorations = useCallback(() => {
+    if (!showArrayHints) {
+      removeArrayHintWidgets(outputEditorRef.current, outputWidgetsRef.current);
+      outputWidgetsRef.current = [];
+      return;
+    }
+
     outputWidgetsRef.current = applyArrayCountWidgets(
       outputEditorRef.current,
       outputWidgetsRef.current,
       outputMonacoLanguage,
     );
-  }, [outputMonacoLanguage]);
+  }, [outputMonacoLanguage, showArrayHints]);
 
   useEffect(() => {
     refreshInputDecorations();

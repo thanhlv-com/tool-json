@@ -19,6 +19,8 @@ type TopNavigationProps = {
   onNavigateMode: (mode: Mode) => void;
   syncInputAcrossModes: boolean;
   onSyncInputAcrossModesChange: (value: boolean) => void;
+  showArrayHints: boolean;
+  onShowArrayHintsChange: (value: boolean) => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
 };
@@ -28,6 +30,8 @@ export function TopNavigation({
   onNavigateMode,
   syncInputAcrossModes,
   onSyncInputAcrossModesChange,
+  showArrayHints,
+  onShowArrayHintsChange,
   theme,
   onToggleTheme,
 }: TopNavigationProps) {
@@ -126,6 +130,15 @@ export function TopNavigation({
             className="h-3.5 w-3.5 accent-blue-500"
           />
           Sync Input
+        </label>
+        <label className="hidden sm:flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[#9AA0A6]">
+          <input
+            type="checkbox"
+            checked={showArrayHints}
+            onChange={(event) => onShowArrayHintsChange(event.target.checked)}
+            className="h-3.5 w-3.5 accent-blue-500"
+          />
+          Type Hints
         </label>
         <div className="h-4 w-[1px] bg-[#333] hidden sm:block"></div>
         <div className="hidden sm:flex items-center gap-2 text-[10px] text-[#808080] font-mono">

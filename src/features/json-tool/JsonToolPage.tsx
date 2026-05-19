@@ -41,6 +41,8 @@ export function JsonToolPage() {
     setJsonPath,
     syncInputAcrossModes,
     setSyncInputAcrossModes,
+    showArrayHints,
+    setShowArrayHints,
     theme,
     setTheme,
     csvInputLooksLikeJson,
@@ -94,6 +96,8 @@ export function JsonToolPage() {
         onNavigateMode={(nextMode) => navigate(MODE_PATHS[nextMode])}
         syncInputAcrossModes={syncInputAcrossModes}
         onSyncInputAcrossModesChange={setSyncInputAcrossModes}
+        showArrayHints={showArrayHints}
+        onShowArrayHintsChange={setShowArrayHints}
         theme={theme}
         onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'vs-dark' ? 'light' : 'vs-dark'))}
       />
@@ -192,6 +196,7 @@ export function JsonToolPage() {
               output={output}
               outputLanguage={outputLanguage}
               csvInputLooksLikeJson={csvInputLooksLikeJson}
+              showArrayHints={showArrayHints}
               onInputChange={setInput}
               onInputValidate={handleEditorValidation}
               onExpandAll={handleExpandAll}
