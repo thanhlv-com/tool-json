@@ -3,6 +3,7 @@ import { JSONPath } from 'jsonpath-plus';
 import YAML from 'yaml';
 import type {
   ConvertSourceFormat,
+  ConvertTargetFormat,
   CsvOptions,
   ErrorStatus,
   Mode,
@@ -15,7 +16,9 @@ import type {
 import {
   applyJsonPatchOperations,
   convertCsvToJson,
+  convertJsonToProperties,
   convertJsonToCsv,
+  convertJsonToXml,
   escapeOrUnescapeJsonString,
   generateJsonDiffReport,
   generateJsonPatchOperations,
@@ -64,6 +67,7 @@ type PersistedState = {
   output: string;
   outputLanguage: OutputLanguage;
   convertSourceFormat: ConvertSourceFormat;
+  convertTargetFormat: ConvertTargetFormat;
   diffOriginal: string;
   diffModified: string;
   jsonPath: string;
@@ -98,6 +102,7 @@ function createDefaultPersistedState(): PersistedState {
     output: '',
     outputLanguage: 'json',
     convertSourceFormat: null,
+    convertTargetFormat: 'yaml',
     diffOriginal: DEFAULT_PATCH_BASE_INPUT,
     diffModified: DEFAULT_PATCH_TARGET_INPUT,
     jsonPath: '$.features',
@@ -141,12 +146,18 @@ function loadPersistedState(): PersistedState {
     };
 
     const lastMode = parsed.lastMode && ALL_MODES.includes(parsed.lastMode) ? parsed.lastMode : 'format';
+    const convertTargetFormat =
+      parsed.convertTargetFormat &&
+      ['json', 'yaml', 'xml', 'properties'].includes(parsed.convertTargetFormat)
+        ? (parsed.convertTargetFormat as ConvertTargetFormat)
+        : defaults.convertTargetFormat;
 
     return {
       ...defaults,
       ...parsed,
       inputByMode,
       csvOptions,
+      convertTargetFormat,
       version: 2,
       lastMode,
     };
@@ -171,6 +182,7 @@ export function useJsonToolState(mode: Mode) {
   const [output, setOutput] = useState<string>(initialState.output);
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>(initialState.outputLanguage);
   const [convertSourceFormat, setConvertSourceFormat] = useState<ConvertSourceFormat>(initialState.convertSourceFormat);
+  const [convertTargetFormat, setConvertTargetFormat] = useState<ConvertTargetFormat>(initialState.convertTargetFormat);
   const [diffOriginal, setDiffOriginal] = useState<string>(initialState.diffOriginal);
   const [diffModified, setDiffModified] = useState<string>(initialState.diffModified);
   const [diffReport, setDiffReport] = useState<JsonDiffReport | null>(null);
@@ -262,8 +274,19 @@ export function useJsonToolState(mode: Mode) {
           }
 
           setConvertSourceFormat(sourceFormat);
+          const sourceLabel = sourceFormat === 'json' ? 'JSON' : 'YAML';
+          let targetLabel = '';
 
-          if (sourceFormat === 'json') {
+          if (convertTargetFormat === 'json') {
+            targetLabel = 'JSON';
+            setOutputLanguage('json');
+            if (action === 'minify') {
+              setOutput(JSON.stringify(parsed));
+            } else {
+              setOutput(JSON.stringify(parsed, null, 2));
+            }
+          } else if (convertTargetFormat === 'yaml') {
+            targetLabel = 'YAML';
             setOutputLanguage('yaml');
             if (action === 'minify') {
               setOutput(
@@ -275,28 +298,30 @@ export function useJsonToolState(mode: Mode) {
                   simpleKeys: true,
                 }),
               );
-              setErrorStatus({ message: 'Converted JSON to YAML (Minified)', isError: false });
             } else {
               setOutput(YAML.stringify(parsed));
-              if (action === 'validate') {
-                setErrorStatus({ message: 'Valid JSON (Converted to YAML)', isError: false });
-              } else {
-                setErrorStatus({ message: 'Converted JSON to YAML', isError: false });
-              }
             }
+          } else if (convertTargetFormat === 'xml') {
+            targetLabel = 'XML';
+            setOutputLanguage('xml');
+            setOutput(
+              convertJsonToXml(parsed, {
+                pretty: action !== 'minify',
+                rootName: 'root',
+              }),
+            );
           } else {
-            setOutputLanguage('json');
-            if (action === 'minify') {
-              setOutput(JSON.stringify(parsed));
-              setErrorStatus({ message: 'Converted YAML to JSON (Minified)', isError: false });
-            } else {
-              setOutput(JSON.stringify(parsed, null, 2));
-              if (action === 'validate') {
-                setErrorStatus({ message: 'Valid YAML (Converted to JSON)', isError: false });
-              } else {
-                setErrorStatus({ message: 'Converted YAML to JSON', isError: false });
-              }
-            }
+            targetLabel = 'Properties';
+            setOutputLanguage('plaintext');
+            setOutput(convertJsonToProperties(parsed));
+          }
+
+          if (action === 'validate') {
+            setErrorStatus({ message: `Valid ${sourceLabel} (Converted to ${targetLabel})`, isError: false });
+          } else if (action === 'minify') {
+            setErrorStatus({ message: `Converted ${sourceLabel} to ${targetLabel} (Minified)`, isError: false });
+          } else {
+            setErrorStatus({ message: `Converted ${sourceLabel} to ${targetLabel}`, isError: false });
           }
           return;
         }
@@ -445,7 +470,7 @@ export function useJsonToolState(mode: Mode) {
         setErrorStatus({ message: `Parse Error: ${error.message}`, isError: true });
       }
     },
-    [csvOptions, input, jsonPath, mode, schemaCustomKeywordsInput, schemaDraft, schemaInput],
+    [convertTargetFormat, csvOptions, input, jsonPath, mode, schemaCustomKeywordsInput, schemaDraft, schemaInput],
   );
 
   const handleGeneratePatch = useCallback(() => {
@@ -735,6 +760,7 @@ export function useJsonToolState(mode: Mode) {
       output,
       outputLanguage,
       convertSourceFormat,
+      convertTargetFormat,
       diffOriginal,
       diffModified,
       jsonPath,
@@ -751,6 +777,7 @@ export function useJsonToolState(mode: Mode) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
   }, [
     convertSourceFormat,
+    convertTargetFormat,
     csvOptions,
     diffModified,
     diffOriginal,
@@ -783,6 +810,8 @@ export function useJsonToolState(mode: Mode) {
     output,
     outputLanguage,
     convertSourceFormat,
+    convertTargetFormat,
+    setConvertTargetFormat,
     diffOriginal,
     setDiffOriginal,
     diffModified,

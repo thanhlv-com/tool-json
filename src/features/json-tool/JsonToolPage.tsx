@@ -31,6 +31,8 @@ export function JsonToolPage() {
     output,
     outputLanguage,
     convertSourceFormat,
+    convertTargetFormat,
+    setConvertTargetFormat,
     diffOriginal,
     setDiffOriginal,
     diffModified,
@@ -121,6 +123,7 @@ export function JsonToolPage() {
           <ActionBar
             mode={mode}
             convertSourceFormat={convertSourceFormat}
+            convertTargetFormat={convertTargetFormat}
             errorStatus={errorStatus}
             jsonPath={jsonPath}
             output={output}
@@ -129,6 +132,7 @@ export function JsonToolPage() {
             schemaDraft={schemaDraft}
             schemaCustomKeywordsInput={schemaCustomKeywordsInput}
             onJsonPathChange={setJsonPath}
+            onConvertTargetFormatChange={setConvertTargetFormat}
             onFormat={handleFormat}
             onMinify={handleMinify}
             onValidate={handleValidate}

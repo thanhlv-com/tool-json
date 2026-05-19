@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type {
   ConvertSourceFormat,
+  ConvertTargetFormat,
   CsvOptions,
   ErrorStatus,
   Mode,
@@ -20,6 +21,7 @@ import type {
 type ActionBarProps = {
   mode: Exclude<Mode, 'diff' | 'patch'>;
   convertSourceFormat: ConvertSourceFormat;
+  convertTargetFormat: ConvertTargetFormat;
   errorStatus: ErrorStatus;
   jsonPath: string;
   output: string;
@@ -28,6 +30,7 @@ type ActionBarProps = {
   schemaDraft: SchemaDraft;
   schemaCustomKeywordsInput: string;
   onJsonPathChange: (value: string) => void;
+  onConvertTargetFormatChange: (value: ConvertTargetFormat) => void;
   onFormat: () => void;
   onMinify: () => void;
   onValidate: () => void;
@@ -52,6 +55,7 @@ function getInputAccept(mode: Exclude<Mode, 'diff' | 'patch'>): string {
 export function ActionBar({
   mode,
   convertSourceFormat,
+  convertTargetFormat,
   errorStatus,
   jsonPath,
   output,
@@ -60,6 +64,7 @@ export function ActionBar({
   schemaDraft,
   schemaCustomKeywordsInput,
   onJsonPathChange,
+  onConvertTargetFormatChange,
   onFormat,
   onMinify,
   onValidate,
@@ -80,8 +85,7 @@ export function ActionBar({
     mode === 'schemaGenerate' ||
     mode === 'schemaValidate' ||
     mode === 'convertCsv' ||
-    mode === 'escape' ||
-    (mode === 'convert' && convertSourceFormat === 'json');
+    mode === 'escape';
 
   const actionLabel =
     mode === 'schemaGenerate'
@@ -94,8 +98,14 @@ export function ActionBar({
             ? 'Escape/Unescape'
             : 'Validate';
   const downloadFilename =
-    mode === 'convert' && outputLanguage === 'yaml'
-      ? 'result.yaml'
+    mode === 'convert'
+      ? convertTargetFormat === 'yaml'
+        ? 'result.yaml'
+        : convertTargetFormat === 'xml'
+          ? 'result.xml'
+          : convertTargetFormat === 'properties'
+            ? 'result.properties'
+            : 'result.json'
       : mode === 'convertCsv' && outputLanguage === 'plaintext'
         ? csvOptions.delimiter === '\t'
           ? 'result.tsv'
@@ -161,6 +171,23 @@ export function ActionBar({
               className="bg-[#121214] border border-[#333] text-xs text-[#A0A0A0] outline-none rounded px-3 py-1 w-64 font-mono focus:border-blue-500 transition-colors hover:border-[#555]"
               placeholder="$.features"
             />
+          </div>
+        )}
+
+        {mode === 'convert' && (
+          <div className="hidden lg:flex items-center gap-2 text-[11px] text-[#A0A0A0] shrink-0">
+            <span className="text-[#808080]">Target</span>
+            <select
+              value={convertTargetFormat}
+              onChange={(event) => onConvertTargetFormatChange(event.target.value as ConvertTargetFormat)}
+              className="bg-[#121214] border border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
+            >
+              <option value="json">JSON</option>
+              <option value="yaml">YAML</option>
+              <option value="xml">XML</option>
+              <option value="properties">Properties</option>
+            </select>
+            {convertSourceFormat && <span className="text-[#6F7780]">from {convertSourceFormat.toUpperCase()}</span>}
           </div>
         )}
 

@@ -324,6 +324,142 @@ export function convertCsvToJson(csvText: string, options?: Partial<CsvOptions>)
   });
 }
 
+function escapeXmlText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function normalizeXmlTagName(name: string): string {
+  const sanitized = name.trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_.:-]/g, '_');
+  if (!sanitized) {
+    return 'item';
+  }
+  if (!/^[A-Za-z_]/.test(sanitized)) {
+    return `_${sanitized}`;
+  }
+  return sanitized;
+}
+
+function serializeXmlNode(
+  tagName: string,
+  value: unknown,
+  options: { pretty: boolean; indentSize: number },
+  depth: number,
+): string {
+  const safeTag = normalizeXmlTagName(tagName);
+  const indent = options.pretty ? ' '.repeat(depth * options.indentSize) : '';
+  const newline = options.pretty ? '\n' : '';
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return `${indent}<${safeTag}/>`;
+    }
+    return value.map((item) => serializeXmlNode(safeTag, item, options, depth)).join(newline);
+  }
+
+  if (value === null || value === undefined) {
+    return `${indent}<${safeTag}/>`;
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) {
+      return `${indent}<${safeTag}/>`;
+    }
+
+    const innerNodes = entries.map(([key, child]) => serializeXmlNode(key, child, options, depth + 1)).join(newline);
+    if (!options.pretty) {
+      return `${indent}<${safeTag}>${innerNodes}</${safeTag}>`;
+    }
+
+    return `${indent}<${safeTag}>${newline}${innerNodes}${newline}${indent}</${safeTag}>`;
+  }
+
+  return `${indent}<${safeTag}>${escapeXmlText(String(value))}</${safeTag}>`;
+}
+
+export function convertJsonToXml(
+  value: unknown,
+  options?: {
+    rootName?: string;
+    pretty?: boolean;
+    includeDeclaration?: boolean;
+  },
+): string {
+  const rootName = options?.rootName ?? 'root';
+  const pretty = options?.pretty ?? true;
+  const includeDeclaration = options?.includeDeclaration ?? true;
+  const indentSize = 2;
+  const newline = pretty ? '\n' : '';
+
+  const rootNode = serializeXmlNode(rootName, value, { pretty, indentSize }, 0);
+  if (!includeDeclaration) {
+    return rootNode;
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>${newline}${rootNode}`;
+}
+
+function escapePropertiesSegment(segment: string): string {
+  return segment.replace(/([\\=:\s])/g, '\\$1');
+}
+
+function escapePropertiesValue(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+function flattenToProperties(value: unknown, path: string, lines: string[]): void {
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      if (path) {
+        lines.push(`${path}=`);
+      }
+      return;
+    }
+
+    value.forEach((item, index) => {
+      const nextPath = path ? `${path}[${index}]` : `items[${index}]`;
+      flattenToProperties(item, nextPath, lines);
+    });
+    return;
+  }
+
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) {
+      if (path) {
+        lines.push(`${path}=`);
+      }
+      return;
+    }
+
+    entries.forEach(([key, childValue]) => {
+      const safeKey = escapePropertiesSegment(key);
+      const nextPath = path ? `${path}.${safeKey}` : safeKey;
+      flattenToProperties(childValue, nextPath, lines);
+    });
+    return;
+  }
+
+  const key = path || 'value';
+  const scalar = value === null || value === undefined ? '' : String(value);
+  lines.push(`${key}=${escapePropertiesValue(scalar)}`);
+}
+
+export function convertJsonToProperties(value: unknown): string {
+  const lines: string[] = [];
+  flattenToProperties(value, '', lines);
+  return lines.join('\n');
+}
+
 export function escapeOrUnescapeJsonString(input: string): {
   output: string;
   outputLanguage: 'json' | 'plaintext';
