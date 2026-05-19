@@ -76,7 +76,7 @@ export function TopNavigation({
               mode === 'convert' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
             }`}
           >
-            <FileCode2 className="w-3.5 h-3.5" /> YAML
+            <FileCode2 className="w-3.5 h-3.5" /> Convert
           </button>
           <button
             onClick={() => onNavigateMode('schemaGenerate')}

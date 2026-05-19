@@ -17,9 +17,22 @@ export function JsonToolPage() {
   const mode = getModeFromPathname(location.pathname) ?? 'format';
 
   useEffect(() => {
+    const normalizedPath = location.pathname.endsWith('/') && location.pathname !== '/' ? location.pathname.slice(0, -1) : location.pathname;
+
     if (!isValidModePath(location.pathname)) {
       const persistedMode = getPersistedLastMode();
       navigate(MODE_PATHS[persistedMode ?? 'format'], { replace: true });
+      return;
+    }
+
+    const currentMode = getModeFromPathname(location.pathname);
+    if (!currentMode) {
+      return;
+    }
+
+    const canonicalPath = MODE_PATHS[currentMode];
+    if (normalizedPath !== canonicalPath) {
+      navigate(canonicalPath, { replace: true });
     }
   }, [location.pathname, navigate]);
 

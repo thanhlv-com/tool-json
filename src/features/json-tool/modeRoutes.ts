@@ -4,12 +4,16 @@ export const MODE_PATHS: Record<Mode, string> = {
   format: '/editor',
   diff: '/diff',
   query: '/query',
-  convert: '/yaml',
+  convert: '/convert',
   schemaGenerate: '/schema-generate',
   schemaValidate: '/schema-validate',
   convertCsv: '/csv',
   escape: '/escape',
   patch: '/patch',
+};
+
+const LEGACY_PATH_TO_MODE: Record<string, Mode> = {
+  '/yaml': 'convert',
 };
 
 const PATH_TO_MODE: Record<string, Mode> = Object.entries(MODE_PATHS).reduce(
@@ -22,7 +26,7 @@ const PATH_TO_MODE: Record<string, Mode> = Object.entries(MODE_PATHS).reduce(
 
 export function getModeFromPathname(pathname: string): Mode | null {
   const normalized = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
-  return PATH_TO_MODE[normalized] ?? null;
+  return PATH_TO_MODE[normalized] ?? LEGACY_PATH_TO_MODE[normalized] ?? null;
 }
 
 export function isValidModePath(pathname: string): boolean {

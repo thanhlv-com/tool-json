@@ -148,7 +148,7 @@ function loadPersistedState(): PersistedState {
     const lastMode = parsed.lastMode && ALL_MODES.includes(parsed.lastMode) ? parsed.lastMode : 'format';
     const convertTargetFormat =
       parsed.convertTargetFormat &&
-      ['json', 'yaml', 'xml', 'properties'].includes(parsed.convertTargetFormat)
+      ['yaml', 'xml', 'properties'].includes(parsed.convertTargetFormat)
         ? (parsed.convertTargetFormat as ConvertTargetFormat)
         : defaults.convertTargetFormat;
 
@@ -263,29 +263,17 @@ export function useJsonToolState(mode: Mode) {
       try {
         if (mode === 'convert') {
           let parsed: any;
-          let sourceFormat: ConvertSourceFormat = null;
-
           try {
             parsed = JSON.parse(customInput);
-            sourceFormat = 'json';
-          } catch {
-            parsed = YAML.parse(customInput);
-            sourceFormat = 'yaml';
+          } catch (error: any) {
+            throw new Error(`Convert mode only accepts valid JSON input: ${error.message}`);
           }
 
-          setConvertSourceFormat(sourceFormat);
-          const sourceLabel = sourceFormat === 'json' ? 'JSON' : 'YAML';
+          setConvertSourceFormat('json');
+          const sourceLabel = 'JSON';
           let targetLabel = '';
 
-          if (convertTargetFormat === 'json') {
-            targetLabel = 'JSON';
-            setOutputLanguage('json');
-            if (action === 'minify') {
-              setOutput(JSON.stringify(parsed));
-            } else {
-              setOutput(JSON.stringify(parsed, null, 2));
-            }
-          } else if (convertTargetFormat === 'yaml') {
+          if (convertTargetFormat === 'yaml') {
             targetLabel = 'YAML';
             setOutputLanguage('yaml');
             if (action === 'minify') {

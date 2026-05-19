@@ -14,7 +14,7 @@ export type ThemeMode = 'vs-dark' | 'light';
 export type OutputLanguage = 'json' | 'yaml' | 'xml' | 'plaintext';
 
 export type ConvertSourceFormat = 'json' | 'yaml' | null;
-export type ConvertTargetFormat = 'json' | 'yaml' | 'xml' | 'properties';
+export type ConvertTargetFormat = 'yaml' | 'xml' | 'properties';
 
 export type ErrorStatus = {
   message: string;

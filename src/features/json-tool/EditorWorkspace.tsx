@@ -259,7 +259,7 @@ export function EditorWorkspace({
 
   const leftLabel =
     mode === 'convert'
-      ? 'INPUT_SOURCE.yml/json'
+      ? 'INPUT_SOURCE.json'
       : mode === 'schemaGenerate'
         ? 'SAMPLE_JSON'
         : mode === 'convertCsv'
@@ -279,7 +279,7 @@ export function EditorWorkspace({
             : 'PRETTY VIEW';
   const inputLanguage: StructuredLanguage =
     mode === 'convert'
-      ? 'yaml'
+      ? 'json'
       : mode === 'convertCsv'
         ? csvInputLooksLikeJson
           ? 'json'

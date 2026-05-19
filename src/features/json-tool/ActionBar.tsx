@@ -47,7 +47,7 @@ type ActionBarProps = {
 
 function getInputAccept(mode: Exclude<Mode, 'diff' | 'patch'>): string {
   if (mode === 'convertCsv') return '.json,.csv,.tsv,.txt';
-  if (mode === 'convert') return '.json,.yaml,.yml,.txt';
+  if (mode === 'convert') return '.json';
   if (mode === 'escape') return '.txt,.json';
   return '.json,.txt';
 }
@@ -103,9 +103,7 @@ export function ActionBar({
         ? 'result.yaml'
         : convertTargetFormat === 'xml'
           ? 'result.xml'
-          : convertTargetFormat === 'properties'
-            ? 'result.properties'
-            : 'result.json'
+          : 'result.properties'
       : mode === 'convertCsv' && outputLanguage === 'plaintext'
         ? csvOptions.delimiter === '\t'
           ? 'result.tsv'
@@ -182,7 +180,6 @@ export function ActionBar({
               onChange={(event) => onConvertTargetFormatChange(event.target.value as ConvertTargetFormat)}
               className="bg-[#121214] border border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
             >
-              <option value="json">JSON</option>
               <option value="yaml">YAML</option>
               <option value="xml">XML</option>
               <option value="properties">Properties</option>
