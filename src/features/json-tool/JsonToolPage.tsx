@@ -68,6 +68,7 @@ export function JsonToolPage() {
     handleValidate,
     handleGeneratePatch,
     handleApplyPatch,
+    handleFormatDiff,
     handleExpandAll,
     handleCollapseAll,
     copyToClipboard,
@@ -99,7 +100,7 @@ export function JsonToolPage() {
 
       <div className="flex-1 flex flex-col min-h-0">
         {mode === 'diff' ? (
-          <DiffActionBar diffReport={diffReport} diffParseError={diffParseError} />
+          <DiffActionBar diffReport={diffReport} diffParseError={diffParseError} onFormat={handleFormatDiff} />
         ) : mode === 'patch' ? (
           <PatchActionBar
             output={output}

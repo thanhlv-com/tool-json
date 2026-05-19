@@ -478,6 +478,40 @@ export function useJsonToolState(mode: Mode) {
     }
   }, [patchBaseInput, patchOperationsInput]);
 
+  const handleFormatDiff = useCallback(() => {
+    const hasOriginal = diffOriginal.trim().length > 0;
+    const hasModified = diffModified.trim().length > 0;
+
+    if (!hasOriginal && !hasModified) {
+      return;
+    }
+
+    let nextOriginal = diffOriginal;
+    let nextModified = diffModified;
+
+    if (hasOriginal) {
+      try {
+        nextOriginal = JSON.stringify(JSON.parse(diffOriginal), null, 2);
+      } catch (error: any) {
+        setDiffParseError(`Cannot format original JSON: ${error.message}`);
+        return;
+      }
+    }
+
+    if (hasModified) {
+      try {
+        nextModified = JSON.stringify(JSON.parse(diffModified), null, 2);
+      } catch (error: any) {
+        setDiffParseError(`Cannot format modified JSON: ${error.message}`);
+        return;
+      }
+    }
+
+    setDiffOriginal(nextOriginal);
+    setDiffModified(nextModified);
+    setDiffParseError(null);
+  }, [diffModified, diffOriginal]);
+
   useEffect(() => {
     if (mode !== 'patch') {
       return;
@@ -777,6 +811,7 @@ export function useJsonToolState(mode: Mode) {
     handleValidate,
     handleGeneratePatch,
     handleApplyPatch,
+    handleFormatDiff,
     handleExpandAll,
     handleCollapseAll,
     copyToClipboard,
