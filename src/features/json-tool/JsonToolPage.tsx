@@ -186,17 +186,19 @@ export function JsonToolPage() {
           theme={theme}
           onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'vs-dark' ? 'light' : 'vs-dark'))}
         />
-        <WorkspaceHistoryBar
-          historyEnabled={historyEnabled}
-          canUndo={canUndoWorkspaceHistory}
-          canRedo={canRedoWorkspaceHistory}
-          activeSnapshotId={activeWorkspaceSnapshotId}
-          snapshots={workspaceHistorySnapshots}
-          onUndo={undoWorkspaceHistory}
-          onRedo={redoWorkspaceHistory}
-          onSaveSnapshot={saveWorkspaceSnapshot}
-          onRestoreSnapshot={restoreWorkspaceSnapshotById}
-        />
+        {historyEnabled && (
+          <WorkspaceHistoryBar
+            historyEnabled={historyEnabled}
+            canUndo={canUndoWorkspaceHistory}
+            canRedo={canRedoWorkspaceHistory}
+            activeSnapshotId={activeWorkspaceSnapshotId}
+            snapshots={workspaceHistorySnapshots}
+            onUndo={undoWorkspaceHistory}
+            onRedo={redoWorkspaceHistory}
+            onSaveSnapshot={saveWorkspaceSnapshot}
+            onRestoreSnapshot={restoreWorkspaceSnapshotById}
+          />
+        )}
 
         <div className="flex-1 flex flex-col min-h-0">
           {mode === 'diff' ? (

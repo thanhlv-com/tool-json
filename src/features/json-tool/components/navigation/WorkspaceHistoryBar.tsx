@@ -35,7 +35,7 @@ export function WorkspaceHistoryBar({
 
         <button
           onClick={onUndo}
-          disabled={!historyEnabled || !canUndo}
+          disabled={!canUndo}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <RotateCcw className="w-3.5 h-3.5" /> Undo
@@ -43,7 +43,7 @@ export function WorkspaceHistoryBar({
 
         <button
           onClick={onRedo}
-          disabled={!historyEnabled || !canRedo}
+          disabled={!canRedo}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Redo2 className="w-3.5 h-3.5" /> Redo
@@ -65,7 +65,7 @@ export function WorkspaceHistoryBar({
         <select
           value={activeSnapshotId ?? ''}
           onChange={(event) => onRestoreSnapshot(event.target.value)}
-          disabled={!historyEnabled || !hasSnapshots}
+          disabled={!hasSnapshots}
           className="max-w-full min-w-[220px] bg-[#121214] border border-[#333] rounded px-2 py-1 text-xs text-[#E0E0E0] outline-none focus:border-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {!hasSnapshots && <option value="">No snapshots yet</option>}
