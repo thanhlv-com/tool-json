@@ -84,24 +84,6 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 
 ## 2. Next Priorities (chưa triển khai)
 
-### 3) Schema validation nâng cao (`$ref` / schema import)
-
-- Mục tiêu: hỗ trợ bài toán validate thực tế với schema tách file hoặc schema tái sử dụng.
-- Phạm vi kỹ thuật: cho phép import nhiều schema, resolve `$ref` nội bộ/ngoại vi, và hiển thị lỗi theo schema nguồn.
-- Tiêu chí hoàn thành: validate thành công với bộ schema nhiều file và báo lỗi rõ ràng theo path + schema id.
-
-### 6) Workspace history và snapshot
-
-- Mục tiêu: giúp quay lại trạng thái trước đó khi thao tác sai hoặc thử nhiều phương án.
-- Phạm vi kỹ thuật: lưu snapshot theo mode, undo/redo ở cấp workflow, đặt tên snapshot và restore nhanh. Có thể cấu hin bật tắt giống `Type Hints`.
-- Tiêu chí hoàn thành: khôi phục được trạng thái input/options/output trước đó mà không cần dán lại thủ công.
-
-### 7) Plugin architecture cho custom transforms
-
-- Mục tiêu: mở rộng công cụ mà không sửa lõi nhiều.
-- Phạm vi kỹ thuật: định nghĩa interface `transformer` chuẩn và registry local cho custom action/mode.
-- Tiêu chí hoàn thành: thêm transform mới với thay đổi giới hạn trong module plugin.
-
 ## 3. Backlog mở rộng
 
 - Theme preset và font size preset cho editor.
