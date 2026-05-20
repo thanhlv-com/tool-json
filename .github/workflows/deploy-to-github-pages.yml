@@ -12,10 +12,10 @@ permissions:
   id-token: write
 
 concurrency:
-  group: build-and-deploy-live
+  group: deploy-to-github-pages
   cancel-in-progress: true
 
-run-name: Build and deploy live
+run-name: Deploy to GitHub Pages
 
 jobs:
   build_app:
