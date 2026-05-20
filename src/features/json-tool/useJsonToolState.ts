@@ -95,11 +95,12 @@ const ALL_MODES: Mode[] = [
 ];
 
 type PersistedState = {
-  version: 2;
+  version: 3;
   sharedInput: string;
   inputByMode: Record<InputMode, string>;
   syncInputAcrossModes: boolean;
   showArrayHints: boolean;
+  historyEnabled: boolean;
   schemaInput: string;
   schemaImportsInput: string;
   output: string;
@@ -121,8 +122,47 @@ type PersistedState = {
   patchOperationsInput: string;
   mergeLeftInput: string;
   mergeRightInput: string;
+  workspaceHistoryByMode: WorkspaceHistoryByMode;
   lastMode: Mode;
 };
+
+type WorkspaceSnapshotState = {
+  syncInputAcrossModes: boolean;
+  input?: string;
+  output: string;
+  outputLanguage: OutputLanguage;
+  jsonPath?: string;
+  convertTargetFormat?: ConvertTargetFormat;
+  csvOptions?: CsvOptions;
+  schemaInput?: string;
+  schemaImportsInput?: string;
+  schemaDraft?: SchemaDraft;
+  schemaCustomKeywordsInput?: string;
+  pipelineStepsInput?: string;
+  privacyRulesInput?: string;
+  privacyPreviewMaskedOnly?: boolean;
+  diffOriginal?: string;
+  diffModified?: string;
+  patchBaseInput?: string;
+  patchTargetInput?: string;
+  patchOperationsInput?: string;
+  mergeLeftInput?: string;
+  mergeRightInput?: string;
+};
+
+type WorkspaceHistoryEntry = {
+  id: string;
+  label: string;
+  createdAt: string;
+  state: WorkspaceSnapshotState;
+};
+
+type WorkspaceHistoryTimeline = {
+  entries: WorkspaceHistoryEntry[];
+  cursor: number;
+};
+
+type WorkspaceHistoryByMode = Record<Mode, WorkspaceHistoryTimeline>;
 
 type SharePayload = {
   version: 1;
@@ -158,6 +198,9 @@ const LARGE_DIFF_DEBOUNCE_MS = 400;
 const MAX_DIFF_DETAILS_DEFAULT = 600;
 const MAX_DIFF_DETAILS_FOR_LARGE_INPUT = 200;
 const MAX_PERSIST_TEXT_LENGTH = 1_000_000;
+const MAX_WORKSPACE_HISTORY_ENTRIES = 40;
+const WORKSPACE_HISTORY_DEBOUNCE_MS = 700;
+const MAX_WORKSPACE_SNAPSHOT_TEXT_LENGTH = 250_000;
 
 function createDefaultInputByMode(value: string): Record<InputMode, string> {
   return INPUT_MODES.reduce(
@@ -171,11 +214,12 @@ function createDefaultInputByMode(value: string): Record<InputMode, string> {
 
 function createDefaultPersistedState(): PersistedState {
   return {
-    version: 2,
+    version: 3,
     sharedInput: DEFAULT_JSON_INPUT,
     inputByMode: createDefaultInputByMode(DEFAULT_JSON_INPUT),
     syncInputAcrossModes: true,
     showArrayHints: true,
+    historyEnabled: true,
     schemaInput: DEFAULT_SCHEMA_INPUT,
     schemaImportsInput: DEFAULT_SCHEMA_IMPORTS_INPUT,
     output: '',
@@ -197,8 +241,104 @@ function createDefaultPersistedState(): PersistedState {
     patchOperationsInput: DEFAULT_PATCH_OPERATIONS_INPUT,
     mergeLeftInput: DEFAULT_MERGE_LEFT_INPUT,
     mergeRightInput: DEFAULT_MERGE_RIGHT_INPUT,
+    workspaceHistoryByMode: createDefaultWorkspaceHistoryByMode(),
     lastMode: 'format',
   };
+}
+
+function createDefaultWorkspaceHistoryByMode(): WorkspaceHistoryByMode {
+  return ALL_MODES.reduce(
+    (result, mode) => {
+      result[mode] = {
+        entries: [],
+        cursor: -1,
+      };
+      return result;
+    },
+    {} as WorkspaceHistoryByMode,
+  );
+}
+
+function normalizeWorkspaceHistoryByMode(rawHistory: unknown): WorkspaceHistoryByMode {
+  const defaults = createDefaultWorkspaceHistoryByMode();
+
+  if (!rawHistory || typeof rawHistory !== 'object') {
+    return defaults;
+  }
+
+  return ALL_MODES.reduce(
+    (result, mode) => {
+      const timeline = (rawHistory as Record<string, unknown>)[mode];
+
+      if (!timeline || typeof timeline !== 'object') {
+        result[mode] = defaults[mode];
+        return result;
+      }
+
+      const entries = Array.isArray((timeline as WorkspaceHistoryTimeline).entries)
+        ? ((timeline as WorkspaceHistoryTimeline).entries as WorkspaceHistoryEntry[])
+            .filter(
+              (entry) =>
+                entry &&
+                typeof entry === 'object' &&
+                typeof entry.id === 'string' &&
+                typeof entry.label === 'string' &&
+                typeof entry.createdAt === 'string' &&
+                entry.state &&
+                typeof entry.state === 'object',
+            )
+            .slice(-MAX_WORKSPACE_HISTORY_ENTRIES)
+        : [];
+
+      const rawCursor = Number((timeline as WorkspaceHistoryTimeline).cursor);
+      const cursor = Number.isInteger(rawCursor)
+        ? Math.max(-1, Math.min(rawCursor, entries.length - 1))
+        : entries.length > 0
+          ? entries.length - 1
+          : -1;
+
+      result[mode] = {
+        entries,
+        cursor,
+      };
+      return result;
+    },
+    {} as WorkspaceHistoryByMode,
+  );
+}
+
+function getTimestampLabelPrefix(value: Date): string {
+  return value.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function createWorkspaceHistoryEntry(
+  label: string,
+  state: WorkspaceSnapshotState,
+  now: Date = new Date(),
+): WorkspaceHistoryEntry {
+  const stamp = now.toISOString();
+  return {
+    id: `${stamp}-${Math.random().toString(36).slice(2, 8)}`,
+    label,
+    createdAt: stamp,
+    state,
+  };
+}
+
+function getWorkspaceSnapshotSize(state: WorkspaceSnapshotState): number {
+  try {
+    return JSON.stringify(state).length;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+}
+
+function areWorkspaceSnapshotsEqual(left: WorkspaceSnapshotState, right: WorkspaceSnapshotState): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function isLikelyJsonInput(value: string): boolean {
@@ -342,6 +482,9 @@ function loadPersistedState(): PersistedState {
       ['yaml', 'xml', 'properties'].includes(parsed.convertTargetFormat)
         ? (parsed.convertTargetFormat as ConvertTargetFormat)
         : defaults.convertTargetFormat;
+    const historyEnabled =
+      typeof parsed.historyEnabled === 'boolean' ? parsed.historyEnabled : defaults.historyEnabled;
+    const workspaceHistoryByMode = normalizeWorkspaceHistoryByMode(parsed.workspaceHistoryByMode);
 
     return {
       ...defaults,
@@ -349,7 +492,9 @@ function loadPersistedState(): PersistedState {
       inputByMode,
       csvOptions,
       convertTargetFormat,
-      version: 2,
+      version: 3,
+      historyEnabled,
+      workspaceHistoryByMode,
       lastMode,
     };
   } catch {
@@ -395,6 +540,10 @@ export function useJsonToolState(mode: Mode) {
   const [patchOperationsInput, setPatchOperationsInput] = useState<string>(initialState.patchOperationsInput);
   const [mergeLeftInput, setMergeLeftInput] = useState<string>(initialState.mergeLeftInput);
   const [mergeRightInput, setMergeRightInput] = useState<string>(initialState.mergeRightInput);
+  const [historyEnabled, setHistoryEnabled] = useState<boolean>(initialState.historyEnabled);
+  const [workspaceHistoryByMode, setWorkspaceHistoryByMode] = useState<WorkspaceHistoryByMode>(
+    initialState.workspaceHistoryByMode,
+  );
 
   const inputEditorRef = useRef<any>(null);
   const outputEditorRef = useRef<any>(null);
@@ -403,6 +552,7 @@ export function useJsonToolState(mode: Mode) {
   const pipelineStepsEditorRef = useRef<any>(null);
   const privacyRulesEditorRef = useRef<any>(null);
   const appliedShareTokenRef = useRef<string | null>(null);
+  const workspaceHistoryRestoreRef = useRef<boolean>(false);
   const inputMode: InputMode = mode === 'diff' || mode === 'patch' || mode === 'merge' ? 'format' : mode;
   const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
   const csvInputLooksLikeJson = mode === 'convertCsv' && isLikelyJsonInput(input);
@@ -446,6 +596,426 @@ export function useJsonToolState(mode: Mode) {
     },
     [inputByMode, inputMode, sharedInput],
   );
+
+  const createWorkspaceSnapshotForMode = useCallback(
+    (targetMode: Mode): WorkspaceSnapshotState => {
+      const targetInputMode: InputMode =
+        targetMode === 'diff' || targetMode === 'patch' || targetMode === 'merge' ? 'format' : targetMode;
+      const targetInput = syncInputAcrossModes ? sharedInput : inputByMode[targetInputMode];
+      const baseSnapshot: WorkspaceSnapshotState = {
+        syncInputAcrossModes,
+        output,
+        outputLanguage,
+      };
+
+      if (targetMode === 'diff') {
+        return {
+          ...baseSnapshot,
+          diffOriginal,
+          diffModified,
+        };
+      }
+
+      if (targetMode === 'patch') {
+        return {
+          ...baseSnapshot,
+          patchBaseInput,
+          patchTargetInput,
+          patchOperationsInput,
+        };
+      }
+
+      if (targetMode === 'merge') {
+        return {
+          ...baseSnapshot,
+          mergeLeftInput,
+          mergeRightInput,
+        };
+      }
+
+      const inputSnapshot: WorkspaceSnapshotState = {
+        ...baseSnapshot,
+        input: targetInput,
+      };
+
+      if (targetMode === 'query') {
+        inputSnapshot.jsonPath = jsonPath;
+      }
+
+      if (targetMode === 'convert') {
+        inputSnapshot.convertTargetFormat = convertTargetFormat;
+      }
+
+      if (targetMode === 'convertCsv') {
+        inputSnapshot.csvOptions = csvOptions;
+      }
+
+      if (targetMode === 'schemaValidate') {
+        inputSnapshot.schemaInput = schemaInput;
+        inputSnapshot.schemaImportsInput = schemaImportsInput;
+        inputSnapshot.schemaDraft = schemaDraft;
+        inputSnapshot.schemaCustomKeywordsInput = schemaCustomKeywordsInput;
+      }
+
+      if (targetMode === 'pipeline') {
+        inputSnapshot.pipelineStepsInput = pipelineStepsInput;
+      }
+
+      if (targetMode === 'privacy') {
+        inputSnapshot.privacyRulesInput = privacyRulesInput;
+        inputSnapshot.privacyPreviewMaskedOnly = privacyPreviewMaskedOnly;
+      }
+
+      return inputSnapshot;
+    },
+    [
+      convertTargetFormat,
+      csvOptions,
+      diffModified,
+      diffOriginal,
+      inputByMode,
+      jsonPath,
+      mergeLeftInput,
+      mergeRightInput,
+      output,
+      outputLanguage,
+      patchBaseInput,
+      patchOperationsInput,
+      patchTargetInput,
+      pipelineStepsInput,
+      privacyPreviewMaskedOnly,
+      privacyRulesInput,
+      schemaCustomKeywordsInput,
+      schemaDraft,
+      schemaImportsInput,
+      schemaInput,
+      sharedInput,
+      syncInputAcrossModes,
+    ],
+  );
+
+  const applyWorkspaceSnapshotForMode = useCallback(
+    (targetMode: Mode, snapshot: WorkspaceSnapshotState) => {
+      workspaceHistoryRestoreRef.current = true;
+
+      const nextSyncInputAcrossModes = snapshot.syncInputAcrossModes;
+      const restoreOutputLanguage = snapshot.outputLanguage ?? 'json';
+
+      setSyncInputAcrossModesState(nextSyncInputAcrossModes);
+      setOutput(snapshot.output ?? '');
+      setOutputLanguage(restoreOutputLanguage);
+      setSchemaValidationIssues([]);
+      setDiffParseError(null);
+
+      if (targetMode === 'diff') {
+        setDiffOriginal(snapshot.diffOriginal ?? '');
+        setDiffModified(snapshot.diffModified ?? '');
+      } else if (targetMode === 'patch') {
+        setPatchBaseInput(snapshot.patchBaseInput ?? '');
+        setPatchTargetInput(snapshot.patchTargetInput ?? '');
+        setPatchOperationsInput(snapshot.patchOperationsInput ?? '');
+      } else if (targetMode === 'merge') {
+        setMergeLeftInput(snapshot.mergeLeftInput ?? '');
+        setMergeRightInput(snapshot.mergeRightInput ?? '');
+      } else {
+        const targetInputMode = targetMode as InputMode;
+
+        if (typeof snapshot.input === 'string') {
+          setInputByMode((previous) => ({
+            ...previous,
+            [targetInputMode]: snapshot.input ?? '',
+          }));
+
+          if (nextSyncInputAcrossModes) {
+            setSharedInput(snapshot.input);
+          }
+        }
+
+        if (targetMode === 'query' && typeof snapshot.jsonPath === 'string') {
+          setJsonPath(snapshot.jsonPath);
+        }
+
+        if (targetMode === 'convert' && isConvertTargetFormat(snapshot.convertTargetFormat)) {
+          setConvertTargetFormat(snapshot.convertTargetFormat);
+        }
+
+        if (targetMode === 'convertCsv' && snapshot.csvOptions) {
+          const normalizedCsvOptions = normalizeCsvOptions(snapshot.csvOptions);
+          if (normalizedCsvOptions) {
+            setCsvOptions(normalizedCsvOptions);
+          }
+        }
+
+        if (targetMode === 'schemaValidate') {
+          if (typeof snapshot.schemaInput === 'string') {
+            setSchemaInput(snapshot.schemaInput);
+          }
+
+          if (typeof snapshot.schemaImportsInput === 'string') {
+            setSchemaImportsInput(snapshot.schemaImportsInput);
+          }
+
+          if (isSchemaDraft(snapshot.schemaDraft)) {
+            setSchemaDraft(snapshot.schemaDraft);
+          }
+
+          if (typeof snapshot.schemaCustomKeywordsInput === 'string') {
+            setSchemaCustomKeywordsInput(snapshot.schemaCustomKeywordsInput);
+          }
+        }
+
+        if (targetMode === 'pipeline' && typeof snapshot.pipelineStepsInput === 'string') {
+          setPipelineStepsInput(snapshot.pipelineStepsInput);
+        }
+
+        if (targetMode === 'privacy') {
+          if (typeof snapshot.privacyRulesInput === 'string') {
+            setPrivacyRulesInput(snapshot.privacyRulesInput);
+          }
+
+          if (typeof snapshot.privacyPreviewMaskedOnly === 'boolean') {
+            setPrivacyPreviewMaskedOnly(snapshot.privacyPreviewMaskedOnly);
+          }
+        }
+      }
+
+      window.setTimeout(() => {
+        workspaceHistoryRestoreRef.current = false;
+      }, 0);
+    },
+    [],
+  );
+
+  const activeWorkspaceHistory = workspaceHistoryByMode[mode];
+  const activeWorkspaceHistoryEntries = activeWorkspaceHistory?.entries ?? [];
+  const activeWorkspaceHistoryCursor = activeWorkspaceHistory?.cursor ?? -1;
+  const activeWorkspaceSnapshotId =
+    activeWorkspaceHistoryCursor >= 0 && activeWorkspaceHistoryEntries[activeWorkspaceHistoryCursor]
+      ? activeWorkspaceHistoryEntries[activeWorkspaceHistoryCursor].id
+      : null;
+  const canUndoWorkspaceHistory = historyEnabled && activeWorkspaceHistoryCursor > 0;
+  const canRedoWorkspaceHistory =
+    historyEnabled &&
+    activeWorkspaceHistoryCursor >= 0 &&
+    activeWorkspaceHistoryCursor < activeWorkspaceHistoryEntries.length - 1;
+  const workspaceHistorySnapshots = activeWorkspaceHistoryEntries.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    createdAt: entry.createdAt,
+  }));
+
+  const saveWorkspaceSnapshot = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const snapshot = createWorkspaceSnapshotForMode(mode);
+    const snapshotSize = getWorkspaceSnapshotSize(snapshot);
+
+    if (snapshotSize > MAX_WORKSPACE_SNAPSHOT_TEXT_LENGTH) {
+      setErrorStatus({
+        message: 'Snapshot too large. Please reduce input size before saving.',
+        isError: true,
+      });
+      return;
+    }
+
+    const defaultSnapshotName = `Snapshot ${getTimestampLabelPrefix(new Date())}`;
+    const rawName = window.prompt('Snapshot name', defaultSnapshotName);
+
+    if (rawName === null) {
+      return;
+    }
+
+    const snapshotName = rawName.trim() || defaultSnapshotName;
+
+    setWorkspaceHistoryByMode((previous) => {
+      const currentTimeline = previous[mode] ?? { entries: [], cursor: -1 };
+      const entriesBeforeCursor =
+        currentTimeline.cursor >= 0 ? currentTimeline.entries.slice(0, currentTimeline.cursor + 1) : currentTimeline.entries;
+      const currentEntry =
+        currentTimeline.cursor >= 0 && entriesBeforeCursor[currentTimeline.cursor]
+          ? entriesBeforeCursor[currentTimeline.cursor]
+          : null;
+
+      if (currentEntry && areWorkspaceSnapshotsEqual(currentEntry.state, snapshot) && currentEntry.label === snapshotName) {
+        return previous;
+      }
+
+      let nextEntries = entriesBeforeCursor;
+
+      if (currentEntry && areWorkspaceSnapshotsEqual(currentEntry.state, snapshot)) {
+        nextEntries = entriesBeforeCursor.map((entry, index) =>
+          index === currentTimeline.cursor
+            ? {
+                ...entry,
+                label: snapshotName,
+              }
+            : entry,
+        );
+      } else {
+        nextEntries = [...entriesBeforeCursor, createWorkspaceHistoryEntry(snapshotName, snapshot)];
+      }
+
+      if (nextEntries.length > MAX_WORKSPACE_HISTORY_ENTRIES) {
+        nextEntries = nextEntries.slice(nextEntries.length - MAX_WORKSPACE_HISTORY_ENTRIES);
+      }
+
+      return {
+        ...previous,
+        [mode]: {
+          entries: nextEntries,
+          cursor: nextEntries.length > 0 ? nextEntries.length - 1 : -1,
+        },
+      };
+    });
+
+    setErrorStatus({ message: `Saved snapshot "${snapshotName}"`, isError: false });
+  }, [createWorkspaceSnapshotForMode, mode]);
+
+  const restoreWorkspaceSnapshotById = useCallback(
+    (snapshotId: string) => {
+      if (!snapshotId) {
+        return;
+      }
+
+      const activeTimeline = workspaceHistoryByMode[mode];
+      const entryIndex = activeTimeline?.entries.findIndex((entry) => entry.id === snapshotId) ?? -1;
+      if (entryIndex < 0 || !activeTimeline?.entries[entryIndex]) {
+        return;
+      }
+
+      const entry = activeTimeline.entries[entryIndex];
+      applyWorkspaceSnapshotForMode(mode, entry.state);
+
+      setWorkspaceHistoryByMode((previous) => ({
+        ...previous,
+        [mode]: {
+          ...previous[mode],
+          cursor: entryIndex,
+        },
+      }));
+      setErrorStatus({ message: `Restored snapshot "${entry.label}"`, isError: false });
+    },
+    [applyWorkspaceSnapshotForMode, mode, workspaceHistoryByMode],
+  );
+
+  const undoWorkspaceHistory = useCallback(() => {
+    const activeTimeline = workspaceHistoryByMode[mode];
+    if (!historyEnabled || !activeTimeline || activeTimeline.cursor <= 0) {
+      return;
+    }
+
+    const nextCursor = activeTimeline.cursor - 1;
+    const entry = activeTimeline.entries[nextCursor];
+    if (!entry) {
+      return;
+    }
+
+    applyWorkspaceSnapshotForMode(mode, entry.state);
+    setWorkspaceHistoryByMode((previous) => ({
+      ...previous,
+      [mode]: {
+        ...previous[mode],
+        cursor: nextCursor,
+      },
+    }));
+    setErrorStatus({ message: `Undo to "${entry.label}"`, isError: false });
+  }, [applyWorkspaceSnapshotForMode, historyEnabled, mode, workspaceHistoryByMode]);
+
+  const redoWorkspaceHistory = useCallback(() => {
+    const activeTimeline = workspaceHistoryByMode[mode];
+    if (!historyEnabled || !activeTimeline || activeTimeline.cursor >= activeTimeline.entries.length - 1) {
+      return;
+    }
+
+    const nextCursor = activeTimeline.cursor + 1;
+    const entry = activeTimeline.entries[nextCursor];
+    if (!entry) {
+      return;
+    }
+
+    applyWorkspaceSnapshotForMode(mode, entry.state);
+    setWorkspaceHistoryByMode((previous) => ({
+      ...previous,
+      [mode]: {
+        ...previous[mode],
+        cursor: nextCursor,
+      },
+    }));
+    setErrorStatus({ message: `Redo to "${entry.label}"`, isError: false });
+  }, [applyWorkspaceSnapshotForMode, historyEnabled, mode, workspaceHistoryByMode]);
+
+  useEffect(() => {
+    if (!historyEnabled) {
+      return;
+    }
+
+    const snapshot = createWorkspaceSnapshotForMode(mode);
+    if (getWorkspaceSnapshotSize(snapshot) > MAX_WORKSPACE_SNAPSHOT_TEXT_LENGTH) {
+      return;
+    }
+
+    setWorkspaceHistoryByMode((previous) => {
+      const activeTimeline = previous[mode] ?? { entries: [], cursor: -1 };
+      if (activeTimeline.entries.length > 0) {
+        return previous;
+      }
+
+      const initialEntry = createWorkspaceHistoryEntry('Initial State', snapshot);
+      return {
+        ...previous,
+        [mode]: {
+          entries: [initialEntry],
+          cursor: 0,
+        },
+      };
+    });
+  }, [createWorkspaceSnapshotForMode, historyEnabled, mode]);
+
+  useEffect(() => {
+    if (!historyEnabled || workspaceHistoryRestoreRef.current) {
+      return;
+    }
+
+    const snapshot = createWorkspaceSnapshotForMode(mode);
+    if (getWorkspaceSnapshotSize(snapshot) > MAX_WORKSPACE_SNAPSHOT_TEXT_LENGTH) {
+      return;
+    }
+
+    const historyTimer = window.setTimeout(() => {
+      const autoLabel = `Auto ${getTimestampLabelPrefix(new Date())}`;
+
+      setWorkspaceHistoryByMode((previous) => {
+        const activeTimeline = previous[mode] ?? { entries: [], cursor: -1 };
+        const entriesBeforeCursor =
+          activeTimeline.cursor >= 0 ? activeTimeline.entries.slice(0, activeTimeline.cursor + 1) : activeTimeline.entries;
+        const currentEntry =
+          activeTimeline.cursor >= 0 && entriesBeforeCursor[activeTimeline.cursor]
+            ? entriesBeforeCursor[activeTimeline.cursor]
+            : null;
+
+        if (currentEntry && areWorkspaceSnapshotsEqual(currentEntry.state, snapshot)) {
+          return previous;
+        }
+
+        let nextEntries = [...entriesBeforeCursor, createWorkspaceHistoryEntry(autoLabel, snapshot)];
+        if (nextEntries.length > MAX_WORKSPACE_HISTORY_ENTRIES) {
+          nextEntries = nextEntries.slice(nextEntries.length - MAX_WORKSPACE_HISTORY_ENTRIES);
+        }
+
+        return {
+          ...previous,
+          [mode]: {
+            entries: nextEntries,
+            cursor: nextEntries.length > 0 ? nextEntries.length - 1 : -1,
+          },
+        };
+      });
+    }, WORKSPACE_HISTORY_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(historyTimer);
+  }, [createWorkspaceSnapshotForMode, historyEnabled, mode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1364,6 +1934,7 @@ export function useJsonToolState(mode: Mode) {
       return;
     }
 
+    const workspaceHistoryTextLength = JSON.stringify(workspaceHistoryByMode).length;
     const totalTextLength =
       sharedInput.length +
       schemaInput.length +
@@ -1378,18 +1949,20 @@ export function useJsonToolState(mode: Mode) {
       patchOperationsInput.length +
       mergeLeftInput.length +
       mergeRightInput.length +
-      INPUT_MODES.reduce((sum, inputModeKey) => sum + inputByMode[inputModeKey].length, 0);
+      INPUT_MODES.reduce((sum, inputModeKey) => sum + inputByMode[inputModeKey].length, 0) +
+      workspaceHistoryTextLength;
 
     if (totalTextLength > MAX_PERSIST_TEXT_LENGTH) {
       return;
     }
 
     const nextState: PersistedState = {
-      version: 2,
+      version: 3,
       sharedInput,
       inputByMode,
       syncInputAcrossModes,
       showArrayHints,
+      historyEnabled,
       schemaInput,
       schemaImportsInput,
       output,
@@ -1411,6 +1984,7 @@ export function useJsonToolState(mode: Mode) {
       patchOperationsInput,
       mergeLeftInput,
       mergeRightInput,
+      workspaceHistoryByMode,
       lastMode: mode,
     };
 
@@ -1443,9 +2017,11 @@ export function useJsonToolState(mode: Mode) {
     schemaImportsInput,
     schemaInput,
     showArrayHints,
+    historyEnabled,
     sharedInput,
     syncInputAcrossModes,
     theme,
+    workspaceHistoryByMode,
   ]);
 
   return {
@@ -1455,6 +2031,16 @@ export function useJsonToolState(mode: Mode) {
     setSyncInputAcrossModes,
     showArrayHints,
     setShowArrayHints,
+    historyEnabled,
+    setHistoryEnabled,
+    canUndoWorkspaceHistory,
+    canRedoWorkspaceHistory,
+    activeWorkspaceSnapshotId,
+    workspaceHistorySnapshots,
+    undoWorkspaceHistory,
+    redoWorkspaceHistory,
+    saveWorkspaceSnapshot,
+    restoreWorkspaceSnapshotById,
     schemaInput,
     setSchemaInput,
     schemaImportsInput,

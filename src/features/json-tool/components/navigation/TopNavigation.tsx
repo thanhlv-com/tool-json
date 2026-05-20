@@ -24,6 +24,8 @@ type TopNavigationProps = {
   onSyncInputAcrossModesChange: (value: boolean) => void;
   showArrayHints: boolean;
   onShowArrayHintsChange: (value: boolean) => void;
+  historyEnabled: boolean;
+  onHistoryEnabledChange: (value: boolean) => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
 };
@@ -35,6 +37,8 @@ export function TopNavigation({
   onSyncInputAcrossModesChange,
   showArrayHints,
   onShowArrayHintsChange,
+  historyEnabled,
+  onHistoryEnabledChange,
   theme,
   onToggleTheme,
 }: TopNavigationProps) {
@@ -83,6 +87,16 @@ export function TopNavigation({
             />
             <span className="hidden sm:inline">Type Hints</span>
             <span className="sm:hidden">Hints</span>
+          </label>
+          <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#9AA0A6]">
+            <input
+              type="checkbox"
+              checked={historyEnabled}
+              onChange={(event) => onHistoryEnabledChange(event.target.checked)}
+              className="h-3.5 w-3.5 accent-blue-500"
+            />
+            <span className="hidden sm:inline">Workspace History</span>
+            <span className="sm:hidden">History</span>
           </label>
           <div className="hidden lg:flex items-center gap-2 text-[10px] text-[#808080] font-mono">
             <span className="px-1.5 py-0.5 border border-[#333] rounded">⌘/Ctrl + F</span> <span className="mr-2">Format</span>

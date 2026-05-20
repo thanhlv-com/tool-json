@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ActionBar, DiffActionBar, MergeActionBar, PatchActionBar } from './components/action-bars';
-import { TopNavigation } from './components/navigation';
+import { TopNavigation, WorkspaceHistoryBar } from './components/navigation';
 import {
   DiffWorkspace,
   EditorWorkspace,
@@ -94,6 +94,16 @@ export function JsonToolPage() {
     setSyncInputAcrossModes,
     showArrayHints,
     setShowArrayHints,
+    historyEnabled,
+    setHistoryEnabled,
+    canUndoWorkspaceHistory,
+    canRedoWorkspaceHistory,
+    activeWorkspaceSnapshotId,
+    workspaceHistorySnapshots,
+    undoWorkspaceHistory,
+    redoWorkspaceHistory,
+    saveWorkspaceSnapshot,
+    restoreWorkspaceSnapshotById,
     theme,
     setTheme,
     csvInputLooksLikeJson,
@@ -171,8 +181,21 @@ export function JsonToolPage() {
           onSyncInputAcrossModesChange={setSyncInputAcrossModes}
           showArrayHints={showArrayHints}
           onShowArrayHintsChange={setShowArrayHints}
+          historyEnabled={historyEnabled}
+          onHistoryEnabledChange={setHistoryEnabled}
           theme={theme}
           onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'vs-dark' ? 'light' : 'vs-dark'))}
+        />
+        <WorkspaceHistoryBar
+          historyEnabled={historyEnabled}
+          canUndo={canUndoWorkspaceHistory}
+          canRedo={canRedoWorkspaceHistory}
+          activeSnapshotId={activeWorkspaceSnapshotId}
+          snapshots={workspaceHistorySnapshots}
+          onUndo={undoWorkspaceHistory}
+          onRedo={redoWorkspaceHistory}
+          onSaveSnapshot={saveWorkspaceSnapshot}
+          onRestoreSnapshot={restoreWorkspaceSnapshotById}
         />
 
         <div className="flex-1 flex flex-col min-h-0">
