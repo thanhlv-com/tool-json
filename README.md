@@ -46,6 +46,7 @@ Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, s
 - Hỗ trợ import input từ file qua nút `Open` theo từng mode.
 - Hỗ trợ share link theo mode hiện tại qua nút `Share` trên tất cả action bar (link chứa state mode hiện tại trong query `?share=...`, mở link sẽ tự điều hướng về mode trong payload rồi load dữ liệu tương ứng).
 - Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
+- Offline-first PWA: build tạo service worker + web manifest, cache local các asset chính để app vẫn mở và thao tác được trong điều kiện mạng chập chờn/mất mạng.
 - Responsive layout cho mobile/tablet/desktop: mobile dùng mode dropdown, từ `sm` trở lên dùng tab navigation cuộn ngang; workspace tự đổi số cột theo kích thước màn hình và action bar tự wrap controls.
 
 ## Cấu trúc chính

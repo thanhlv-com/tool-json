@@ -92,6 +92,15 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 - Hành vi hiện tại: người dùng có thể duyệt cấu trúc JSON theo cây, đọc path/type/depth/size/value của node, và định vị
   nhanh node mục tiêu bằng path input.
 
+### 14) Offline-first package (PWA + local cache assets)
+
+- Trạng thái: Done.
+- Đã triển khai: cấu hình `vite-plugin-pwa` để sinh web manifest và service worker trong build production.
+- Hành vi hiện tại:
+- Precache assets chính (HTML/CSS/JS/font/image/icon) để app vẫn mở được khi offline.
+- Navigation request áp dụng `NetworkFirst` + cache fallback.
+- Static resources (`style/script/worker`) dùng `StaleWhileRevalidate`, font dùng `CacheFirst`.
+
 ## 2. Backlog Analysis (mở rộng)
 
 Phần này phân tích backlog theo 4 tiêu chí: giá trị người dùng, độ phức tạp triển khai, rủi ro kỹ thuật, và phụ thuộc
@@ -237,7 +246,6 @@ thành P0/P1/P2 hiện tại.
 | Background worker cho tác vụ nặng (diff/merge/batch)            | Giảm block UI với payload lớn                              | Trung bình - Cao | Phức tạp state sync giữa main thread và worker | Song song Phase 3 |
 | JSON test cases runner (assert query/transform output)          | Biến tool thành môi trường verify luồng xử lý              | Cao              | Thiết kế DSL test và UX report                 | Sau Phase 3       |
 | Plugin hooks cho mode/action mở rộng                            | Cho phép mở rộng theo nhu cầu đặc thù                      | Cao              | Boundary an toàn và compatibility              | Sau Phase 4       |
-| Offline-first package (PWA + local cache assets)                | Trải nghiệm ổn định khi mạng chập chờn                     | Trung bình       | Cache invalidation khi release                 | Song song Phase 4 |
 
 Đề xuất ưu tiên nhóm ý tưởng mới:
 

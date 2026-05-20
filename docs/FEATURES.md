@@ -9,6 +9,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - Path cũ `/yaml` vẫn được map sang mode `convert`, sau đó được canonical redirect sang `/convert`.
 - Nếu URL có `?share=...` hợp lệ, app ưu tiên mode trong payload share và tự điều hướng về canonical route của mode đó trước khi apply dữ liệu.
 - Nếu truy cập path không hợp lệ, app redirect về mode cuối trong `localStorage` (fallback `/editor`).
+- App được đóng gói dạng offline-first PWA qua `vite-plugin-pwa` (service worker + web manifest).
 - State và xử lý nghiệp vụ tập trung ở `useJsonToolState(mode)`.
 - Component UI được nhóm theo thư mục:
 - `components/navigation`: `TopNavigation`.
@@ -191,3 +192,11 @@ Legacy path:
 - Large screens:
 - Top navigation chuyển sang tab ngang và cho phép cuộn ngang khi thiếu chỗ (`hidden sm:flex` + `overflow-x-auto`).
 - Nội dung được giới hạn `max-width` để tránh vùng làm việc quá dàn trải trên màn hình rất rộng.
+
+## 9. Offline-first PWA
+
+- Build production sinh web manifest và service worker.
+- App precache các asset tĩnh quan trọng (HTML/CSS/JS/font/image/icon) để có thể mở lại khi offline.
+- Navigation request dùng `NetworkFirst` kèm fallback về cache, giúp ưu tiên nội dung mới khi có mạng nhưng vẫn usable khi mất mạng.
+- Static resources (`style/script/worker`) dùng `StaleWhileRevalidate` để cân bằng tốc độ và cập nhật.
+- Font dùng `CacheFirst`, image dùng `StaleWhileRevalidate`.
