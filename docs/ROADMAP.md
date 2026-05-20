@@ -69,6 +69,58 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 
 ## 2. Next Priorities (chưa triển khai)
 
-### 1. Backlog mở rộng
+### 1) Bộ test tự động
+
+- Mục tiêu: giảm regression khi mở rộng thêm mode/tùy chọn mới.
+- Phạm vi kỹ thuật: unit test cho `utils.ts`, integration test cho `useJsonToolState`, smoke E2E cho route chính bằng Playwright.
+- Tiêu chí hoàn thành: CI bắt buộc `test + lint + build` trước merge.
+
+### 2) Tối ưu hiệu năng cho JSON lớn
+
+- Mục tiêu: giữ trải nghiệm mượt khi xử lý payload lớn (vài MB đến hàng chục MB).
+- Phạm vi kỹ thuật: chuyển parse/transform nặng sang Web Worker, debounce tác vụ tự chạy, và giới hạn render chi tiết khi dữ liệu quá lớn.
+- Tiêu chí hoàn thành: thao tác cơ bản (mở mode, validate, convert, query) vẫn phản hồi tốt với file lớn và không treo UI.
+
+### 3) JSON Tree Explorer + Path Inspector
+
+- Mục tiêu: giúp người dùng debug cấu trúc JSON nhanh hơn editor text thuần.
+- Phạm vi kỹ thuật: thêm panel tree có expand/collapse, search key/value, copy JSONPath của node, và sync chọn node với editor.
+- Tiêu chí hoàn thành: người dùng có thể xác định path và vùng dữ liệu mục tiêu nhanh hơn trong các tài liệu JSON lớn/phức tạp.
+
+### 4) Schema validation nâng cao (`$ref` / schema import)
+
+- Mục tiêu: hỗ trợ bài toán validate thực tế với schema tách file hoặc schema tái sử dụng.
+- Phạm vi kỹ thuật: cho phép import nhiều schema, resolve `$ref` nội bộ/ngoại vi, và hiển thị lỗi theo schema nguồn.
+- Tiêu chí hoàn thành: validate thành công với bộ schema nhiều file và báo lỗi rõ ràng theo path + schema id.
+
+### 5) JSON Transform pipeline (nhiều bước)
+
+- Mục tiêu: gom nhiều thao tác liên tiếp thành một pipeline có thể tái sử dụng.
+- Phạm vi kỹ thuật: định nghĩa chuỗi bước (format/query/convert/escape/patch...), preview kết quả từng bước, clone/chỉnh sửa pipeline.
+- Tiêu chí hoàn thành: người dùng tạo được pipeline hoàn chỉnh và áp dụng lại cho input khác mà không thao tác thủ công từng mode.
+
+### 6) Privacy mode và data masking
+
+- Mục tiêu: an toàn hơn khi xử lý dữ liệu nhạy cảm trước khi share/copy/export.
+- Phạm vi kỹ thuật: rule mask theo key/pattern (`token`, `email`, `phone`, `authorization`...), toggle hiển thị dữ liệu gốc/masked, cảnh báo trước khi share link.
+- Tiêu chí hoàn thành: output/share/copy có thể loại bỏ hoặc che dữ liệu nhạy cảm theo cấu hình người dùng.
+
+### 7) Workspace history và snapshot
+
+- Mục tiêu: giúp quay lại trạng thái trước đó khi thao tác sai hoặc thử nhiều phương án.
+- Phạm vi kỹ thuật: lưu snapshot theo mode, undo/redo ở cấp workflow, đặt tên snapshot và restore nhanh.
+- Tiêu chí hoàn thành: khôi phục được trạng thái input/options/output trước đó mà không cần dán lại thủ công.
+
+### 8) Plugin architecture cho custom transforms
+
+- Mục tiêu: mở rộng công cụ mà không sửa lõi nhiều.
+- Phạm vi kỹ thuật: định nghĩa interface `transformer` chuẩn và registry local cho custom action/mode.
+- Tiêu chí hoàn thành: thêm transform mới với thay đổi giới hạn trong module plugin.
+
+## 3. Backlog mở rộng
 
 - Theme preset và font size preset cho editor.
+- Multi-tab workspace cho nhiều phiên xử lý song song.
+- Batch processing cho nhiều record/file.
+- So sánh và merge 3-way (base/current/incoming).
+- Cho phép import từ URL/API response mẫu để test nhanh luồng transform.
