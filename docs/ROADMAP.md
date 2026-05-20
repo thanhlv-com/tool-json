@@ -61,6 +61,12 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 - Đã triển khai: mode `/merge` với 2 input JSON (`LEFT_JSON`, `RIGHT_JSON`) và output `MERGED_RESULT`.
 - Hành vi hiện tại: merge sâu object theo key, merge array theo index, ưu tiên giá trị bên phải khi conflict; trả summary thống kê merge ngay trên status bar.
 
+### 11) Shareable URLs
+
+- Trạng thái: Done.
+- Đã triển khai: nút `Share` có trên tất cả action bar, payload được encode trong query `?share=...`.
+- Hành vi hiện tại: link share chứa mode + state theo mode; khi mở link app tự điều hướng về route canonical của mode trong payload rồi restore dữ liệu.
+
 ## 2. Next Priorities (chưa triển khai)
 
 ### 1) Bộ test tự động
@@ -69,13 +75,7 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 - Phạm vi kỹ thuật: unit test cho `utils.ts`, integration test cho `useJsonToolState`, smoke E2E cho route chính bằng Playwright.
 - Tiêu chí hoàn thành: CI chạy test + lint + build trước merge.
 
-### 2) Shareable URLs
-
-- Mục tiêu: chia sẻ nhanh ngữ cảnh làm việc.
-- Phạm vi kỹ thuật: encode mode + input + options vào URL query/hash và thêm nút `Copy share link`.
-- Tiêu chí hoàn thành: mở link trên máy khác khôi phục được đúng mode và dữ liệu.
-
-### 3) Plugin architecture cho custom transforms
+### 2) Plugin architecture cho custom transforms
 
 - Mục tiêu: mở rộng công cụ mà không sửa lõi nhiều.
 - Phạm vi kỹ thuật: định nghĩa interface `transformer` chuẩn và registry local cho custom action/mode.

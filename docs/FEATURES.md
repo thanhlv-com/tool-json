@@ -7,6 +7,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - App dùng `BrowserRouter` + route wildcard (`*`) để render `JsonToolPage`.
 - Map mode theo path nằm trong `modeRoutes.ts`.
 - Path cũ `/yaml` vẫn được map sang mode `convert`, sau đó được canonical redirect sang `/convert`.
+- Nếu URL có `?share=...` hợp lệ, app ưu tiên mode trong payload share và tự điều hướng về canonical route của mode đó trước khi apply dữ liệu.
 - Nếu truy cập path không hợp lệ, app redirect về mode cuối trong `localStorage` (fallback `/editor`).
 - State và xử lý nghiệp vụ tập trung ở `useJsonToolState(mode)`.
 - Component UI được nhóm theo thư mục:
@@ -150,6 +151,7 @@ Legacy path:
 - Nút chính theo mode: `Validate`, `Generate`, `Validate Schema`, `Convert`, `Escape/Unescape`, `Generate Patch`, `Apply Patch`.
 - Nút `Open` import file input có ở action bar mode thường; patch có `Open Base`, `Open Target`, `Open Patch`.
 - Nút `Share` có trên tất cả action bar; app tạo URL có query `?share=...` chứa state mode hiện tại, ưu tiên `navigator.share` và fallback copy link vào clipboard.
+- Khi mở share link, app tự đưa về mode nằm trong payload share (kể cả khi mở từ route khác) rồi mới load state tương ứng.
 - `Copy` và `Down` thao tác trên output hiện tại.
 - Tên file download theo mode/output:
 - `result.yaml` cho YAML output.
@@ -173,8 +175,9 @@ Legacy path:
 ## 8. Responsive behavior
 
 - Mobile/small screens:
-- Top navigation chuyển sang cuộn ngang để không vỡ layout khi số mode nhiều.
+- Top navigation dùng `select` mode picker (`sm:hidden`) để tránh vỡ layout.
 - Main workspace tự giảm về 1 cột (stack theo chiều dọc) cho các mode editor/diff/merge/patch/schema-validate.
 - Action bar tự wrap controls, không phụ thuộc nhiều vào hidden breakpoint như trước.
 - Large screens:
+- Top navigation chuyển sang tab ngang và cho phép cuộn ngang khi thiếu chỗ (`hidden sm:flex` + `overflow-x-auto`).
 - Nội dung được giới hạn `max-width` để tránh vùng làm việc quá dàn trải trên màn hình rất rộng.
