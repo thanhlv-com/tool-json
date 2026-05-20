@@ -86,6 +86,15 @@ export function PrivacyWorkspace({
             }}
           />
         </div>
+        <div className="border-t border-[#262626] bg-[#121214] px-3 py-2 text-[10px] font-mono text-[#8D95A3] space-y-1">
+          <div className="uppercase tracking-wide text-[#A2AAB8]">Supported rule types</div>
+          <div>`key`: {`{ "keys": ["password", "token"] }`}</div>
+          <div>`jsonPath`: {`{ "jsonPathPatterns": ["$.users[*].email", "$..secret"] }`}</div>
+          <div className="pt-1 uppercase tracking-wide text-[#A2AAB8]">Supported properties</div>
+          <div>`maskText`: {`{ "maskText": "***REDACTED***" }`}</div>
+          <div>`keepStartVisible`: {`{ "keepStartVisible": 2 }`} (integer, &gt;= 0)</div>
+          <div>`keepEndVisible`: {`{ "keepEndVisible": 4 }`} (integer, &gt;= 0)</div>
+        </div>
       </section>
 
       <section className="flex min-h-[240px] xl:min-h-0 flex-col">
