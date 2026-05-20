@@ -23,7 +23,9 @@ import {
   generateJsonDiffReport,
   generateJsonPatchOperations,
   generateJsonSchemaFromSample,
+  maskJsonSensitiveData,
   mergeJsonStructures,
+  runJsonTransformPipeline,
   type JsonDiffReport,
   validateJsonBySchema,
 } from './utils';
@@ -41,6 +43,7 @@ const DEFAULT_JSON_INPUT =
   '{\n  "tool": "JSON Dev Tool",\n  "version": 1.0,\n  "features": [\n    "Format",\n    "Validate",\n    "Diff",\n    "Query",\n    "YAML"\n  ],\n  "is_awesome": true\n}';
 const DEFAULT_SCHEMA_INPUT =
   '{\n  "type": "object",\n  "properties": {\n    "tool": { "type": "string" },\n    "version": { "type": "number" }\n  },\n  "required": ["tool", "version"],\n  "additionalProperties": true\n}';
+const DEFAULT_SCHEMA_IMPORTS_INPUT = '[]';
 const DEFAULT_PATCH_BASE_INPUT = '{\n  "status": "ok",\n  "code": 200\n}';
 const DEFAULT_PATCH_TARGET_INPUT = '{\n  "status": "error",\n  "code": 500,\n  "message": "Failed"\n}';
 const DEFAULT_PATCH_OPERATIONS_INPUT =
@@ -49,6 +52,10 @@ const DEFAULT_MERGE_LEFT_INPUT =
   '{\n  "service": {\n    "name": "json-tool",\n    "features": ["format", "diff"],\n    "retries": 2,\n    "enabled": true\n  }\n}';
 const DEFAULT_MERGE_RIGHT_INPUT =
   '{\n  "service": {\n    "features": ["format", "merge", "schema"],\n    "retries": 5,\n    "timeout": 3000\n  },\n  "meta": {\n    "version": "2.0.0"\n  }\n}';
+const DEFAULT_PIPELINE_STEPS_INPUT =
+  '[\n  {\n    "type": "query",\n    "path": "$.features[*]"\n  },\n  {\n    "type": "convert",\n    "target": "json"\n  }\n]';
+const DEFAULT_PRIVACY_RULES_INPUT =
+  '{\n  "keys": ["password", "token", "authorization", "email", "phone"],\n  "jsonPathPatterns": [],\n  "maskText": "***REDACTED***",\n  "keepStartVisible": 0,\n  "keepEndVisible": 4\n}';
 
 const DEFAULT_CSV_OPTIONS: CsvOptions = {
   delimiter: ',',
@@ -59,8 +66,33 @@ const DEFAULT_CSV_OPTIONS: CsvOptions = {
 
 type InputMode = Exclude<Mode, 'diff' | 'patch' | 'merge'>;
 
-const INPUT_MODES: InputMode[] = ['format', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape', 'tree'];
-const ALL_MODES: Mode[] = ['format', 'diff', 'merge', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape', 'patch', 'tree'];
+const INPUT_MODES: InputMode[] = [
+  'format',
+  'query',
+  'pipeline',
+  'privacy',
+  'convert',
+  'schemaGenerate',
+  'schemaValidate',
+  'convertCsv',
+  'escape',
+  'tree',
+];
+const ALL_MODES: Mode[] = [
+  'format',
+  'diff',
+  'merge',
+  'query',
+  'pipeline',
+  'privacy',
+  'convert',
+  'schemaGenerate',
+  'schemaValidate',
+  'convertCsv',
+  'escape',
+  'patch',
+  'tree',
+];
 
 type PersistedState = {
   version: 2;
@@ -69,6 +101,7 @@ type PersistedState = {
   syncInputAcrossModes: boolean;
   showArrayHints: boolean;
   schemaInput: string;
+  schemaImportsInput: string;
   output: string;
   outputLanguage: OutputLanguage;
   convertSourceFormat: ConvertSourceFormat;
@@ -80,6 +113,9 @@ type PersistedState = {
   csvOptions: CsvOptions;
   schemaDraft: SchemaDraft;
   schemaCustomKeywordsInput: string;
+  pipelineStepsInput: string;
+  privacyRulesInput: string;
+  privacyPreviewMaskedOnly: boolean;
   patchBaseInput: string;
   patchTargetInput: string;
   patchOperationsInput: string;
@@ -96,8 +132,12 @@ type SharePayload = {
   convertTargetFormat?: ConvertTargetFormat;
   csvOptions?: Partial<CsvOptions>;
   schemaInput?: string;
+  schemaImportsInput?: string;
   schemaDraft?: SchemaDraft;
   schemaCustomKeywordsInput?: string;
+  pipelineStepsInput?: string;
+  privacyRulesInput?: string;
+  privacyPreviewMaskedOnly?: boolean;
   diffOriginal?: string;
   diffModified?: string;
   patchBaseInput?: string;
@@ -137,6 +177,7 @@ function createDefaultPersistedState(): PersistedState {
     syncInputAcrossModes: true,
     showArrayHints: true,
     schemaInput: DEFAULT_SCHEMA_INPUT,
+    schemaImportsInput: DEFAULT_SCHEMA_IMPORTS_INPUT,
     output: '',
     outputLanguage: 'json',
     convertSourceFormat: null,
@@ -148,6 +189,9 @@ function createDefaultPersistedState(): PersistedState {
     csvOptions: DEFAULT_CSV_OPTIONS,
     schemaDraft: 'draft-07',
     schemaCustomKeywordsInput: '',
+    pipelineStepsInput: DEFAULT_PIPELINE_STEPS_INPUT,
+    privacyRulesInput: DEFAULT_PRIVACY_RULES_INPUT,
+    privacyPreviewMaskedOnly: true,
     patchBaseInput: DEFAULT_PATCH_BASE_INPUT,
     patchTargetInput: DEFAULT_PATCH_TARGET_INPUT,
     patchOperationsInput: DEFAULT_PATCH_OPERATIONS_INPUT,
@@ -168,6 +212,31 @@ function isConvertTargetFormat(value: unknown): value is ConvertTargetFormat {
 
 function isSchemaDraft(value: unknown): value is SchemaDraft {
   return value === 'draft-07' || value === '2019-09' || value === '2020-12';
+}
+
+function parseSchemaImportsInput(value: string): unknown {
+  if (!value.trim()) {
+    return [];
+  }
+
+  const parsed = JSON.parse(value);
+  if (Array.isArray(parsed) || (parsed && typeof parsed === 'object')) {
+    return parsed;
+  }
+
+  throw new Error('Schema imports must be a JSON array or object map');
+}
+
+function countSchemaImports(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.length;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.keys(value as Record<string, unknown>).length;
+  }
+
+  return 0;
 }
 
 function normalizeCsvOptions(options: Partial<CsvOptions> | undefined): CsvOptions | null {
@@ -301,6 +370,7 @@ export function useJsonToolState(mode: Mode) {
   const [syncInputAcrossModes, setSyncInputAcrossModesState] = useState<boolean>(initialState.syncInputAcrossModes);
   const [showArrayHints, setShowArrayHints] = useState<boolean>(initialState.showArrayHints);
   const [schemaInput, setSchemaInput] = useState<string>(initialState.schemaInput);
+  const [schemaImportsInput, setSchemaImportsInput] = useState<string>(initialState.schemaImportsInput);
   const [output, setOutput] = useState<string>(initialState.output);
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>(initialState.outputLanguage);
   const [convertSourceFormat, setConvertSourceFormat] = useState<ConvertSourceFormat>(initialState.convertSourceFormat);
@@ -315,6 +385,9 @@ export function useJsonToolState(mode: Mode) {
   const [csvOptions, setCsvOptions] = useState<CsvOptions>(initialState.csvOptions);
   const [schemaDraft, setSchemaDraft] = useState<SchemaDraft>(initialState.schemaDraft);
   const [schemaCustomKeywordsInput, setSchemaCustomKeywordsInput] = useState<string>(initialState.schemaCustomKeywordsInput);
+  const [pipelineStepsInput, setPipelineStepsInput] = useState<string>(initialState.pipelineStepsInput);
+  const [privacyRulesInput, setPrivacyRulesInput] = useState<string>(initialState.privacyRulesInput);
+  const [privacyPreviewMaskedOnly, setPrivacyPreviewMaskedOnly] = useState<boolean>(initialState.privacyPreviewMaskedOnly);
   const [schemaValidationIssues, setSchemaValidationIssues] = useState<SchemaValidationIssue[]>([]);
 
   const [patchBaseInput, setPatchBaseInput] = useState<string>(initialState.patchBaseInput);
@@ -326,11 +399,21 @@ export function useJsonToolState(mode: Mode) {
   const inputEditorRef = useRef<any>(null);
   const outputEditorRef = useRef<any>(null);
   const schemaEditorRef = useRef<any>(null);
+  const schemaImportsEditorRef = useRef<any>(null);
+  const pipelineStepsEditorRef = useRef<any>(null);
+  const privacyRulesEditorRef = useRef<any>(null);
   const appliedShareTokenRef = useRef<string | null>(null);
   const inputMode: InputMode = mode === 'diff' || mode === 'patch' || mode === 'merge' ? 'format' : mode;
   const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
   const csvInputLooksLikeJson = mode === 'convertCsv' && isLikelyJsonInput(input);
-  const autoProcessInputSize = mode === 'schemaValidate' ? input.length + schemaInput.length : input.length;
+  const autoProcessInputSize =
+    mode === 'schemaValidate'
+      ? input.length + schemaInput.length + schemaImportsInput.length
+      : mode === 'pipeline'
+        ? input.length + pipelineStepsInput.length
+        : mode === 'privacy'
+          ? input.length + privacyRulesInput.length
+          : input.length;
   const autoProcessDebounceMs =
     autoProcessInputSize > LARGE_INPUT_SIZE_THRESHOLD ? LARGE_AUTO_PROCESS_DEBOUNCE_MS : BASE_AUTO_PROCESS_DEBOUNCE_MS;
   const diffInputSize = diffOriginal.length + diffModified.length;
@@ -430,10 +513,20 @@ export function useJsonToolState(mode: Mode) {
 
       if (mode === 'schemaValidate') {
         setSchemaInput(payload.schemaInput ?? '');
+        setSchemaImportsInput(payload.schemaImportsInput ?? DEFAULT_SCHEMA_IMPORTS_INPUT);
         setSchemaCustomKeywordsInput(payload.schemaCustomKeywordsInput ?? '');
         if (isSchemaDraft(payload.schemaDraft)) {
           setSchemaDraft(payload.schemaDraft);
         }
+      }
+
+      if (mode === 'pipeline') {
+        setPipelineStepsInput(payload.pipelineStepsInput ?? DEFAULT_PIPELINE_STEPS_INPUT);
+      }
+
+      if (mode === 'privacy') {
+        setPrivacyRulesInput(payload.privacyRulesInput ?? DEFAULT_PRIVACY_RULES_INPUT);
+        setPrivacyPreviewMaskedOnly(payload.privacyPreviewMaskedOnly ?? true);
       }
     }
 
@@ -540,6 +633,8 @@ export function useJsonToolState(mode: Mode) {
 
           const data = JSON.parse(customInput);
           const schema = JSON.parse(schemaInput);
+          const importedSchemas = parseSchemaImportsInput(schemaImportsInput);
+          const importedSchemaCount = countSchemaImports(importedSchemas);
           const customKeywords = schemaCustomKeywordsInput
             .split(',')
             .map((keyword) => keyword.trim())
@@ -548,6 +643,7 @@ export function useJsonToolState(mode: Mode) {
           const result = validateJsonBySchema(data, schema, {
             draft: schemaDraft,
             customKeywords,
+            importedSchemas,
           });
 
           const normalizedErrors = result.errors.map((error) => ({
@@ -563,6 +659,7 @@ export function useJsonToolState(mode: Mode) {
                 valid: result.valid,
                 draft: schemaDraft,
                 customKeywords,
+                importedSchemaCount,
                 errorCount: normalizedErrors.length,
                 errors: normalizedErrors,
               },
@@ -581,6 +678,58 @@ export function useJsonToolState(mode: Mode) {
             });
           }
 
+          return;
+        }
+
+        if (mode === 'pipeline') {
+          setConvertSourceFormat(null);
+          const parsed = JSON.parse(customInput);
+          const parsedSteps = pipelineStepsInput.trim() ? JSON.parse(pipelineStepsInput) : [];
+
+          if (!Array.isArray(parsedSteps)) {
+            throw new Error('Pipeline steps must be a JSON array');
+          }
+
+          const pipelineResult = runJsonTransformPipeline(parsed, parsedSteps);
+          setOutputLanguage(pipelineResult.outputLanguage);
+          setOutput(pipelineResult.output);
+          setErrorStatus({
+            message: `Pipeline completed (${parsedSteps.length} steps)`,
+            isError: false,
+          });
+          return;
+        }
+
+        if (mode === 'privacy') {
+          setConvertSourceFormat(null);
+          setOutputLanguage('json');
+          const parsed = JSON.parse(customInput);
+          const rules = privacyRulesInput.trim() ? JSON.parse(privacyRulesInput) : {};
+          const maskedResult = maskJsonSensitiveData(parsed, rules);
+
+          if (privacyPreviewMaskedOnly) {
+            setOutput(JSON.stringify(maskedResult.masked, null, 2));
+          } else {
+            setOutput(
+              JSON.stringify(
+                {
+                  masked: maskedResult.masked,
+                  original: parsed,
+                  summary: {
+                    maskedCount: maskedResult.maskedCount,
+                    pathPatternMatches: maskedResult.pathPatternMatchCount,
+                  },
+                },
+                null,
+                2,
+              ),
+            );
+          }
+
+          setErrorStatus({
+            message: `Masked ${maskedResult.maskedCount} fields (${maskedResult.pathPatternMatchCount} path matches)`,
+            isError: false,
+          });
           return;
         }
 
@@ -670,7 +819,21 @@ export function useJsonToolState(mode: Mode) {
         setErrorStatus({ message: `Parse Error: ${error.message}`, isError: true });
       }
     },
-    [convertTargetFormat, csvOptions, input, jsonPath, mode, schemaCustomKeywordsInput, schemaDraft, schemaInput, setInput],
+    [
+      convertTargetFormat,
+      csvOptions,
+      input,
+      jsonPath,
+      mode,
+      pipelineStepsInput,
+      privacyPreviewMaskedOnly,
+      privacyRulesInput,
+      schemaCustomKeywordsInput,
+      schemaDraft,
+      schemaImportsInput,
+      schemaInput,
+      setInput,
+    ],
   );
 
   const handleGeneratePatch = useCallback(() => {
@@ -837,7 +1000,9 @@ export function useJsonToolState(mode: Mode) {
     }
 
     const processTimer = window.setTimeout(() => {
-      processJson(mode === 'tree' ? 'validate' : 'format');
+      const defaultAction =
+        mode === 'tree' || mode === 'pipeline' || mode === 'privacy' ? ('validate' as ProcessAction) : ('format' as ProcessAction);
+      processJson(defaultAction);
     }, autoProcessDebounceMs);
 
     return () => window.clearTimeout(processTimer);
@@ -860,14 +1025,14 @@ export function useJsonToolState(mode: Mode) {
         event.preventDefault();
         if (mode === 'merge') {
           handleFormatMerge();
-        } else if (mode !== 'patch') {
+        } else if (mode !== 'patch' && mode !== 'pipeline' && mode !== 'privacy') {
           processJson('format');
         }
       }
 
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'm') {
         event.preventDefault();
-        if (mode !== 'patch' && mode !== 'merge' && mode !== 'tree') {
+        if (mode !== 'patch' && mode !== 'merge' && mode !== 'tree' && mode !== 'pipeline' && mode !== 'privacy') {
           processJson('minify');
         }
       }
@@ -917,6 +1082,51 @@ export function useJsonToolState(mode: Mode) {
       });
     },
     [mode, schemaInput],
+  );
+
+  const handleSchemaImportsEditorValidation = useCallback(
+    (markers: MonacoMarker[]) => {
+      if (mode !== 'schemaValidate') return;
+      const errors = markers.filter((marker) => marker.severity === 8);
+      if (errors.length === 0 || !schemaImportsInput.trim()) return;
+
+      const firstError = errors[0];
+      setErrorStatus({
+        message: `Schema imports line ${firstError.startLineNumber}, Col ${firstError.startColumn}: ${firstError.message}`,
+        isError: true,
+      });
+    },
+    [mode, schemaImportsInput],
+  );
+
+  const handlePipelineStepsEditorValidation = useCallback(
+    (markers: MonacoMarker[]) => {
+      if (mode !== 'pipeline') return;
+      const errors = markers.filter((marker) => marker.severity === 8);
+      if (errors.length === 0 || !pipelineStepsInput.trim()) return;
+
+      const firstError = errors[0];
+      setErrorStatus({
+        message: `Pipeline line ${firstError.startLineNumber}, Col ${firstError.startColumn}: ${firstError.message}`,
+        isError: true,
+      });
+    },
+    [mode, pipelineStepsInput],
+  );
+
+  const handlePrivacyRulesEditorValidation = useCallback(
+    (markers: MonacoMarker[]) => {
+      if (mode !== 'privacy') return;
+      const errors = markers.filter((marker) => marker.severity === 8);
+      if (errors.length === 0 || !privacyRulesInput.trim()) return;
+
+      const firstError = errors[0];
+      setErrorStatus({
+        message: `Privacy rules line ${firstError.startLineNumber}, Col ${firstError.startColumn}: ${firstError.message}`,
+        isError: true,
+      });
+    },
+    [mode, privacyRulesInput],
   );
 
   const handleFormat = useCallback(() => processJson('format'), [processJson]);
@@ -1002,8 +1212,18 @@ export function useJsonToolState(mode: Mode) {
 
     if (mode === 'schemaValidate') {
       payload.schemaInput = schemaInput;
+      payload.schemaImportsInput = schemaImportsInput;
       payload.schemaDraft = schemaDraft;
       payload.schemaCustomKeywordsInput = schemaCustomKeywordsInput;
+    }
+
+    if (mode === 'pipeline') {
+      payload.pipelineStepsInput = pipelineStepsInput;
+    }
+
+    if (mode === 'privacy') {
+      payload.privacyRulesInput = privacyRulesInput;
+      payload.privacyPreviewMaskedOnly = privacyPreviewMaskedOnly;
     }
 
     return payload;
@@ -1020,8 +1240,12 @@ export function useJsonToolState(mode: Mode) {
     patchBaseInput,
     patchOperationsInput,
     patchTargetInput,
+    pipelineStepsInput,
+    privacyPreviewMaskedOnly,
+    privacyRulesInput,
     schemaCustomKeywordsInput,
     schemaDraft,
+    schemaImportsInput,
     schemaInput,
   ]);
 
@@ -1143,9 +1367,12 @@ export function useJsonToolState(mode: Mode) {
     const totalTextLength =
       sharedInput.length +
       schemaInput.length +
+      schemaImportsInput.length +
       output.length +
       diffOriginal.length +
       diffModified.length +
+      pipelineStepsInput.length +
+      privacyRulesInput.length +
       patchBaseInput.length +
       patchTargetInput.length +
       patchOperationsInput.length +
@@ -1164,6 +1391,7 @@ export function useJsonToolState(mode: Mode) {
       syncInputAcrossModes,
       showArrayHints,
       schemaInput,
+      schemaImportsInput,
       output,
       outputLanguage,
       convertSourceFormat,
@@ -1175,6 +1403,9 @@ export function useJsonToolState(mode: Mode) {
       csvOptions,
       schemaDraft,
       schemaCustomKeywordsInput,
+      pipelineStepsInput,
+      privacyRulesInput,
+      privacyPreviewMaskedOnly,
       patchBaseInput,
       patchTargetInput,
       patchOperationsInput,
@@ -1204,8 +1435,12 @@ export function useJsonToolState(mode: Mode) {
     patchTargetInput,
     mergeLeftInput,
     mergeRightInput,
+    pipelineStepsInput,
+    privacyPreviewMaskedOnly,
+    privacyRulesInput,
     schemaCustomKeywordsInput,
     schemaDraft,
+    schemaImportsInput,
     schemaInput,
     showArrayHints,
     sharedInput,
@@ -1222,6 +1457,8 @@ export function useJsonToolState(mode: Mode) {
     setShowArrayHints,
     schemaInput,
     setSchemaInput,
+    schemaImportsInput,
+    setSchemaImportsInput,
     output,
     outputLanguage,
     convertSourceFormat,
@@ -1245,6 +1482,12 @@ export function useJsonToolState(mode: Mode) {
     setSchemaDraft,
     schemaCustomKeywordsInput,
     setSchemaCustomKeywordsInput,
+    pipelineStepsInput,
+    setPipelineStepsInput,
+    privacyRulesInput,
+    setPrivacyRulesInput,
+    privacyPreviewMaskedOnly,
+    setPrivacyPreviewMaskedOnly,
     schemaValidationIssues,
     patchBaseInput,
     setPatchBaseInput,
@@ -1259,8 +1502,14 @@ export function useJsonToolState(mode: Mode) {
     inputEditorRef,
     outputEditorRef,
     schemaEditorRef,
+    schemaImportsEditorRef,
+    pipelineStepsEditorRef,
+    privacyRulesEditorRef,
     handleEditorValidation,
     handleSchemaEditorValidation,
+    handleSchemaImportsEditorValidation,
+    handlePipelineStepsEditorValidation,
+    handlePrivacyRulesEditorValidation,
     handleFormat,
     handleMinify,
     handleValidate,

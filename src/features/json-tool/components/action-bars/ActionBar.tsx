@@ -30,6 +30,7 @@ type ActionBarProps = {
   csvOptions: CsvOptions;
   schemaDraft: SchemaDraft;
   schemaCustomKeywordsInput: string;
+  privacyPreviewMaskedOnly: boolean;
   onJsonPathChange: (value: string) => void;
   onConvertTargetFormatChange: (value: ConvertTargetFormat) => void;
   onFormat: () => void;
@@ -45,11 +46,13 @@ type ActionBarProps = {
   onCsvEscapeStrategyChange: (value: CsvOptions['escapeStrategy']) => void;
   onSchemaDraftChange: (value: SchemaDraft) => void;
   onSchemaCustomKeywordsInputChange: (value: string) => void;
+  onPrivacyPreviewMaskedOnlyChange: (value: boolean) => void;
 };
 
 function getInputAccept(mode: Exclude<Mode, 'diff' | 'patch' | 'merge'>): string {
   if (mode === 'convertCsv') return '.json,.csv,.tsv,.txt';
   if (mode === 'convert') return '.json';
+  if (mode === 'pipeline' || mode === 'privacy') return '.json';
   if (mode === 'tree') return '.json';
   if (mode === 'escape') return '.txt,.json';
   return '.json,.txt';
@@ -66,6 +69,7 @@ export function ActionBar({
   csvOptions,
   schemaDraft,
   schemaCustomKeywordsInput,
+  privacyPreviewMaskedOnly,
   onJsonPathChange,
   onConvertTargetFormatChange,
   onFormat,
@@ -81,6 +85,7 @@ export function ActionBar({
   onCsvEscapeStrategyChange,
   onSchemaDraftChange,
   onSchemaCustomKeywordsInputChange,
+  onPrivacyPreviewMaskedOnlyChange,
 }: ActionBarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -89,7 +94,9 @@ export function ActionBar({
     mode === 'schemaGenerate' ||
     mode === 'schemaValidate' ||
     mode === 'convertCsv' ||
-    mode === 'escape';
+    mode === 'escape' ||
+    mode === 'pipeline' ||
+    mode === 'privacy';
   const hideMinify = hideFormat || mode === 'tree';
 
   const actionLabel =
@@ -97,6 +104,10 @@ export function ActionBar({
       ? 'Generate'
       : mode === 'schemaValidate'
         ? 'Validate Schema'
+        : mode === 'pipeline'
+          ? 'Run Pipeline'
+          : mode === 'privacy'
+            ? 'Mask Data'
         : mode === 'convertCsv'
           ? 'Convert'
           : mode === 'escape'
@@ -113,6 +124,16 @@ export function ActionBar({
         ? csvOptions.delimiter === '\t'
           ? 'result.tsv'
           : 'result.csv'
+        : mode === 'pipeline'
+          ? outputLanguage === 'yaml'
+            ? 'pipeline-result.yaml'
+            : outputLanguage === 'xml'
+              ? 'pipeline-result.xml'
+              : outputLanguage === 'plaintext'
+                ? 'pipeline-result.txt'
+                : 'pipeline-result.json'
+          : mode === 'privacy'
+            ? 'masked-result.json'
         : mode === 'escape' && outputLanguage === 'plaintext'
           ? 'result.txt'
           : 'result.json';
@@ -269,6 +290,18 @@ export function ActionBar({
               />
             </label>
           </div>
+        )}
+
+        {mode === 'privacy' && (
+          <label className="flex items-center gap-2 text-[11px] text-[#A0A0A0]">
+            <input
+              type="checkbox"
+              checked={privacyPreviewMaskedOnly}
+              onChange={(event) => onPrivacyPreviewMaskedOnlyChange(event.target.checked)}
+              className="h-3.5 w-3.5 accent-blue-500"
+            />
+            <span>Masked-only preview</span>
+          </label>
         )}
 
         {errorStatus && (

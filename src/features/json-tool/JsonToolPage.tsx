@@ -7,6 +7,8 @@ import {
   EditorWorkspace,
   MergeWorkspace,
   PatchWorkspace,
+  PipelineWorkspace,
+  PrivacyWorkspace,
   SchemaValidateWorkspace,
   TreeExplorerWorkspace,
 } from './components/workspaces';
@@ -73,6 +75,8 @@ export function JsonToolPage() {
     setInput,
     schemaInput,
     setSchemaInput,
+    schemaImportsInput,
+    setSchemaImportsInput,
     output,
     outputLanguage,
     convertSourceFormat,
@@ -100,6 +104,12 @@ export function JsonToolPage() {
     setSchemaDraft,
     schemaCustomKeywordsInput,
     setSchemaCustomKeywordsInput,
+    pipelineStepsInput,
+    setPipelineStepsInput,
+    privacyRulesInput,
+    setPrivacyRulesInput,
+    privacyPreviewMaskedOnly,
+    setPrivacyPreviewMaskedOnly,
     schemaValidationIssues,
     patchBaseInput,
     setPatchBaseInput,
@@ -114,8 +124,14 @@ export function JsonToolPage() {
     inputEditorRef,
     outputEditorRef,
     schemaEditorRef,
+    schemaImportsEditorRef,
+    pipelineStepsEditorRef,
+    privacyRulesEditorRef,
     handleEditorValidation,
     handleSchemaEditorValidation,
+    handleSchemaImportsEditorValidation,
+    handlePipelineStepsEditorValidation,
+    handlePrivacyRulesEditorValidation,
     handleFormat,
     handleMinify,
     handleValidate,
@@ -205,6 +221,7 @@ export function JsonToolPage() {
               csvOptions={csvOptions}
               schemaDraft={schemaDraft}
               schemaCustomKeywordsInput={schemaCustomKeywordsInput}
+              privacyPreviewMaskedOnly={privacyPreviewMaskedOnly}
               onJsonPathChange={setJsonPath}
               onConvertTargetFormatChange={setConvertTargetFormat}
               onFormat={handleFormat}
@@ -220,6 +237,7 @@ export function JsonToolPage() {
               onCsvEscapeStrategyChange={(escapeStrategy) => setCsvOptions((previous) => ({ ...previous, escapeStrategy }))}
               onSchemaDraftChange={setSchemaDraft}
               onSchemaCustomKeywordsInputChange={setSchemaCustomKeywordsInput}
+              onPrivacyPreviewMaskedOnlyChange={setPrivacyPreviewMaskedOnly}
             />
           )}
 
@@ -264,23 +282,71 @@ export function JsonToolPage() {
                   inputEditorRef.current = editor;
                 }}
               />
+            ) : mode === 'pipeline' ? (
+              <PipelineWorkspace
+                theme={theme}
+                input={input}
+                pipelineStepsInput={pipelineStepsInput}
+                output={output}
+                outputLanguage={outputLanguage}
+                onInputChange={setInput}
+                onPipelineStepsInputChange={setPipelineStepsInput}
+                onInputValidate={handleEditorValidation}
+                onPipelineStepsValidate={handlePipelineStepsEditorValidation}
+                onInputEditorMount={(editor) => {
+                  inputEditorRef.current = editor;
+                }}
+                onPipelineStepsEditorMount={(editor) => {
+                  pipelineStepsEditorRef.current = editor;
+                }}
+                onOutputEditorMount={(editor) => {
+                  outputEditorRef.current = editor;
+                }}
+              />
+            ) : mode === 'privacy' ? (
+              <PrivacyWorkspace
+                theme={theme}
+                input={input}
+                privacyRulesInput={privacyRulesInput}
+                output={output}
+                outputLanguage={outputLanguage}
+                onInputChange={setInput}
+                onPrivacyRulesInputChange={setPrivacyRulesInput}
+                onInputValidate={handleEditorValidation}
+                onPrivacyRulesValidate={handlePrivacyRulesEditorValidation}
+                onInputEditorMount={(editor) => {
+                  inputEditorRef.current = editor;
+                }}
+                onPrivacyRulesEditorMount={(editor) => {
+                  privacyRulesEditorRef.current = editor;
+                }}
+                onOutputEditorMount={(editor) => {
+                  outputEditorRef.current = editor;
+                }}
+              />
             ) : mode === 'schemaValidate' ? (
               <SchemaValidateWorkspace
                 theme={theme}
                 input={input}
                 schemaInput={schemaInput}
+                schemaImportsInput={schemaImportsInput}
                 output={output}
                 outputLanguage={outputLanguage}
                 schemaValidationIssues={schemaValidationIssues}
                 onInputChange={setInput}
                 onSchemaInputChange={setSchemaInput}
+                onSchemaImportsInputChange={setSchemaImportsInput}
                 onInputValidate={handleEditorValidation}
                 onSchemaValidate={handleSchemaEditorValidation}
+                onSchemaImportsValidate={handleSchemaImportsEditorValidation}
                 onInputEditorMount={(editor) => {
                   inputEditorRef.current = editor;
                 }}
                 onSchemaEditorMount={(editor) => {
                   schemaEditorRef.current = editor;
+                }}
+                onSchemaImportsEditorMount={(editor) => {
+                  schemaImportsEditorRef.current = editor;
                 }}
                 onOutputEditorMount={(editor) => {
                   outputEditorRef.current = editor;

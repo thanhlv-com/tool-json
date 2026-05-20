@@ -3,6 +3,8 @@ export type Mode =
   | 'diff'
   | 'merge'
   | 'query'
+  | 'pipeline'
+  | 'privacy'
   | 'convert'
   | 'schemaGenerate'
   | 'schemaValidate'

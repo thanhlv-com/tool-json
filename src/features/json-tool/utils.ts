@@ -2,7 +2,9 @@ import Ajv, { type ErrorObject } from 'ajv';
 import Ajv2019 from 'ajv/dist/2019';
 import Ajv2020 from 'ajv/dist/2020';
 import { applyPatch, compare, type Operation, validate as validatePatch } from 'fast-json-patch';
-import type { CsvOptions, SchemaDraft } from './types';
+import { JSONPath } from 'jsonpath-plus';
+import YAML from 'yaml';
+import type { CsvOptions, OutputLanguage, SchemaDraft } from './types';
 
 type JsonSchema = Record<string, unknown>;
 
@@ -112,16 +114,73 @@ function addCustomKeywords(ajv: Ajv, keywords: string[]): void {
   }
 }
 
+type ImportedSchemaEntry = {
+  schema: JsonSchema;
+  id?: string;
+};
+
+function isSchemaObject(value: unknown): value is JsonSchema {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeImportedSchemas(importedSchemas: unknown): ImportedSchemaEntry[] {
+  if (!importedSchemas) {
+    return [];
+  }
+
+  if (Array.isArray(importedSchemas)) {
+    return importedSchemas.map((entry, index) => {
+      if (!isSchemaObject(entry)) {
+        throw new Error(`Imported schema at index ${index} must be an object`);
+      }
+
+      const entryId = typeof entry.$id === 'string' ? entry.$id : undefined;
+      return {
+        schema: entry,
+        id: entryId,
+      };
+    });
+  }
+
+  if (isSchemaObject(importedSchemas)) {
+    return Object.entries(importedSchemas).map(([schemaId, schema]) => {
+      if (!isSchemaObject(schema)) {
+        throw new Error(`Imported schema "${schemaId}" must be an object`);
+      }
+
+      return {
+        schema,
+        id: schemaId,
+      };
+    });
+  }
+
+  throw new Error('Imported schemas must be an array or object map');
+}
+
+function addImportedSchemas(ajv: Ajv, importedSchemas: unknown): void {
+  const entries = normalizeImportedSchemas(importedSchemas);
+  entries.forEach((entry) => {
+    if (entry.id) {
+      ajv.addSchema(entry.schema, entry.id);
+    } else {
+      ajv.addSchema(entry.schema);
+    }
+  });
+}
+
 export function validateJsonBySchema(
   data: unknown,
   schema: JsonSchema,
   options?: {
     draft?: SchemaDraft;
     customKeywords?: string[];
+    importedSchemas?: unknown;
   },
 ): { valid: boolean; errors: ErrorObject[] } {
   const ajv = createAjvByDraft(options?.draft ?? 'draft-07');
   addCustomKeywords(ajv, options?.customKeywords ?? []);
+  addImportedSchemas(ajv, options?.importedSchemas);
 
   const validate = ajv.compile(schema);
   const valid = validate(data);
@@ -895,6 +954,428 @@ export function mergeJsonStructures(left: unknown, right: unknown): JsonMergeRes
       ...stats,
       operationCount,
     },
+  };
+}
+
+type PipelineTargetFormat = 'json' | 'yaml' | 'xml' | 'properties';
+
+type TransformStep =
+  | { type: 'query'; path: string }
+  | { type: 'set'; path: string; value: unknown }
+  | { type: 'remove'; path: string }
+  | { type: 'pick'; paths: string[] }
+  | { type: 'mask'; rules?: PrivacyMaskConfig }
+  | { type: 'convert'; target: PipelineTargetFormat };
+
+export type TransformPipelineResult = {
+  output: string;
+  outputLanguage: OutputLanguage;
+  stepMessages: string[];
+};
+
+function ensurePointer(path: string, stepIndex: number): void {
+  if (typeof path !== 'string' || (!path.startsWith('/') && path !== '')) {
+    throw new Error(`Step ${stepIndex + 1}: pointer path must start with "/" or be empty`);
+  }
+}
+
+function setValueAtPointer(source: unknown, pointer: string, value: unknown): unknown {
+  const segments = parseJsonPointer(pointer);
+  if (segments.length === 0) {
+    return cloneJsonValue(value);
+  }
+
+  const root = cloneJsonValue(source);
+  let current: any = root;
+
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index];
+    const nextSegment = segments[index + 1];
+
+    if (Array.isArray(current)) {
+      if (!isArrayIndexToken(segment)) {
+        throw new Error(`Cannot set pointer "${pointer}" on array`);
+      }
+
+      const arrayIndex = Number(segment);
+      const nextContainer = isArrayIndexToken(nextSegment) ? [] : {};
+      if (!isObjectLike(current[arrayIndex]) && !Array.isArray(current[arrayIndex])) {
+        current[arrayIndex] = nextContainer;
+      }
+      current = current[arrayIndex];
+      continue;
+    }
+
+    if (!isObjectLike(current)) {
+      throw new Error(`Cannot set pointer "${pointer}" on non-object value`);
+    }
+
+    if (!isObjectLike(current[segment]) && !Array.isArray(current[segment])) {
+      current[segment] = isArrayIndexToken(nextSegment) ? [] : {};
+    }
+    current = current[segment];
+  }
+
+  const lastSegment = segments[segments.length - 1];
+  if (Array.isArray(current)) {
+    if (!isArrayIndexToken(lastSegment)) {
+      throw new Error(`Cannot set pointer "${pointer}" on array`);
+    }
+    current[Number(lastSegment)] = cloneJsonValue(value);
+    return root;
+  }
+
+  if (!isObjectLike(current)) {
+    throw new Error(`Cannot set pointer "${pointer}" on non-object value`);
+  }
+
+  current[lastSegment] = cloneJsonValue(value);
+  return root;
+}
+
+function removeValueAtPointer(source: unknown, pointer: string): unknown {
+  const segments = parseJsonPointer(pointer);
+  if (segments.length === 0) {
+    throw new Error('Cannot remove root pointer');
+  }
+
+  const root = cloneJsonValue(source);
+  let current: any = root;
+
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index];
+
+    if (Array.isArray(current)) {
+      if (!isArrayIndexToken(segment)) {
+        throw new Error(`Cannot remove pointer "${pointer}" on array`);
+      }
+      current = current[Number(segment)];
+      continue;
+    }
+
+    if (!isObjectLike(current) || !(segment in current)) {
+      throw new Error(`Cannot remove pointer "${pointer}" because it does not exist`);
+    }
+    current = current[segment];
+  }
+
+  const lastSegment = segments[segments.length - 1];
+  if (Array.isArray(current)) {
+    if (!isArrayIndexToken(lastSegment)) {
+      throw new Error(`Cannot remove pointer "${pointer}" on array`);
+    }
+
+    const removeIndex = Number(lastSegment);
+    if (removeIndex < 0 || removeIndex >= current.length) {
+      throw new Error(`Cannot remove pointer "${pointer}" because index does not exist`);
+    }
+    current.splice(removeIndex, 1);
+    return root;
+  }
+
+  if (!isObjectLike(current) || !(lastSegment in current)) {
+    throw new Error(`Cannot remove pointer "${pointer}" because it does not exist`);
+  }
+
+  delete current[lastSegment];
+  return root;
+}
+
+function pickValuesByPointers(source: unknown, pointers: string[]): unknown {
+  if (pointers.some((pointer) => pointer === '')) {
+    return cloneJsonValue(source);
+  }
+
+  const firstPointer = pointers[0];
+  if (!firstPointer) {
+    return {};
+  }
+
+  const firstSegments = parseJsonPointer(firstPointer);
+  let result: unknown = isArrayIndexToken(firstSegments[0]) ? [] : {};
+
+  pointers.forEach((pointer) => {
+    const value = getValueAtPointer(source, pointer);
+    if (value !== undefined) {
+      result = setValueAtPointer(result, pointer, cloneJsonValue(value));
+    }
+  });
+
+  return result;
+}
+
+export function runJsonTransformPipeline(input: unknown, rawSteps: unknown[]): TransformPipelineResult {
+  let current = cloneJsonValue(input);
+  let targetFormat: PipelineTargetFormat = 'json';
+  const stepMessages: string[] = [];
+
+  rawSteps.forEach((rawStep, stepIndex) => {
+    if (!rawStep || typeof rawStep !== 'object' || Array.isArray(rawStep)) {
+      throw new Error(`Step ${stepIndex + 1}: step must be an object`);
+    }
+
+    const step = rawStep as TransformStep;
+
+    if (step.type === 'query') {
+      if (typeof step.path !== 'string' || !step.path.trim()) {
+        throw new Error(`Step ${stepIndex + 1}: query.path is required`);
+      }
+
+      const queryResult = JSONPath({
+        path: step.path,
+        json: current as any,
+        wrap: true,
+      }) as unknown;
+
+      if (!Array.isArray(queryResult)) {
+        throw new Error(`Step ${stepIndex + 1}: query did not return an array result`);
+      }
+
+      current = queryResult;
+      stepMessages.push(`Step ${stepIndex + 1}: query matched ${queryResult.length} item(s)`);
+      return;
+    }
+
+    if (step.type === 'set') {
+      ensurePointer(step.path, stepIndex);
+      current = setValueAtPointer(current, step.path, step.value);
+      stepMessages.push(`Step ${stepIndex + 1}: set ${step.path}`);
+      return;
+    }
+
+    if (step.type === 'remove') {
+      ensurePointer(step.path, stepIndex);
+      current = removeValueAtPointer(current, step.path);
+      stepMessages.push(`Step ${stepIndex + 1}: remove ${step.path}`);
+      return;
+    }
+
+    if (step.type === 'pick') {
+      if (!Array.isArray(step.paths) || step.paths.some((path) => typeof path !== 'string')) {
+        throw new Error(`Step ${stepIndex + 1}: pick.paths must be a string array`);
+      }
+
+      step.paths.forEach((pointer) => ensurePointer(pointer, stepIndex));
+      current = pickValuesByPointers(current, step.paths);
+      stepMessages.push(`Step ${stepIndex + 1}: pick ${step.paths.length} pointer(s)`);
+      return;
+    }
+
+    if (step.type === 'mask') {
+      const maskResult = maskJsonSensitiveData(current, step.rules);
+      current = maskResult.masked;
+      stepMessages.push(`Step ${stepIndex + 1}: masked ${maskResult.maskedCount} field(s)`);
+      return;
+    }
+
+    if (step.type === 'convert') {
+      if (step.target !== 'json' && step.target !== 'yaml' && step.target !== 'xml' && step.target !== 'properties') {
+        throw new Error(`Step ${stepIndex + 1}: convert.target must be json|yaml|xml|properties`);
+      }
+      targetFormat = step.target;
+      stepMessages.push(`Step ${stepIndex + 1}: convert target ${step.target}`);
+      return;
+    }
+
+    throw new Error(`Step ${stepIndex + 1}: unsupported step type`);
+  });
+
+  const resolvedTargetFormat = targetFormat as PipelineTargetFormat;
+
+  if (resolvedTargetFormat === 'yaml') {
+    return {
+      output: YAML.stringify(current),
+      outputLanguage: 'yaml',
+      stepMessages,
+    };
+  }
+
+  if (resolvedTargetFormat === 'xml') {
+    return {
+      output: convertJsonToXml(current, { pretty: true, rootName: 'root' }),
+      outputLanguage: 'xml',
+      stepMessages,
+    };
+  }
+
+  if (resolvedTargetFormat === 'properties') {
+    return {
+      output: convertJsonToProperties(current),
+      outputLanguage: 'plaintext',
+      stepMessages,
+    };
+  }
+
+  return {
+    output: JSON.stringify(current, null, 2),
+    outputLanguage: 'json',
+    stepMessages,
+  };
+}
+
+export type PrivacyMaskConfig = {
+  keys?: string[];
+  jsonPathPatterns?: string[];
+  maskText?: string;
+  keepStartVisible?: number;
+  keepEndVisible?: number;
+};
+
+export type PrivacyMaskResult = {
+  masked: unknown;
+  maskedCount: number;
+  pathPatternMatchCount: number;
+};
+
+const DEFAULT_PRIVACY_MASK_KEYS = ['password', 'token', 'authorization', 'secret', 'apiKey', 'email', 'phone'];
+const DEFAULT_PRIVACY_MASK_TEXT = '***REDACTED***';
+
+function createMaskedText(
+  rawValue: string,
+  options: {
+    maskText: string;
+    keepStartVisible: number;
+    keepEndVisible: number;
+  },
+): string {
+  const { keepStartVisible, keepEndVisible, maskText } = options;
+  if (keepStartVisible <= 0 && keepEndVisible <= 0) {
+    return maskText;
+  }
+
+  if (rawValue.length <= keepStartVisible + keepEndVisible) {
+    return maskText;
+  }
+
+  const hiddenLength = Math.max(rawValue.length - keepStartVisible - keepEndVisible, 3);
+  return `${rawValue.slice(0, keepStartVisible)}${'*'.repeat(hiddenLength)}${rawValue.slice(rawValue.length - keepEndVisible)}`;
+}
+
+function normalizePrivacyMaskConfig(config?: PrivacyMaskConfig): Required<PrivacyMaskConfig> {
+  return {
+    keys: Array.isArray(config?.keys) ? config?.keys.filter((key) => typeof key === 'string') : DEFAULT_PRIVACY_MASK_KEYS,
+    jsonPathPatterns: Array.isArray(config?.jsonPathPatterns)
+      ? config?.jsonPathPatterns.filter((pattern) => typeof pattern === 'string')
+      : [],
+    maskText: typeof config?.maskText === 'string' && config.maskText.length > 0 ? config.maskText : DEFAULT_PRIVACY_MASK_TEXT,
+    keepStartVisible: Number.isInteger(config?.keepStartVisible) ? Math.max(0, Number(config?.keepStartVisible)) : 0,
+    keepEndVisible: Number.isInteger(config?.keepEndVisible) ? Math.max(0, Number(config?.keepEndVisible)) : 0,
+  };
+}
+
+function maskValue(
+  value: unknown,
+  options: {
+    maskText: string;
+    keepStartVisible: number;
+    keepEndVisible: number;
+  },
+): string {
+  if (typeof value === 'string') {
+    return createMaskedText(value, options);
+  }
+
+  if (value === null || value === undefined) {
+    return options.maskText;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return options.maskText;
+  }
+
+  return options.maskText;
+}
+
+function collectMaskedPointersByPatterns(source: unknown, patterns: string[]): Set<string> {
+  const result = new Set<string>();
+
+  patterns.forEach((pattern) => {
+    if (!pattern.trim()) {
+      return;
+    }
+
+    try {
+      const pointers = JSONPath({
+        path: pattern,
+        json: source as any,
+        resultType: 'pointer',
+        wrap: true,
+      }) as unknown;
+
+      if (!Array.isArray(pointers)) {
+        return;
+      }
+
+      pointers.forEach((pointer) => {
+        if (typeof pointer === 'string') {
+          result.add(pointer);
+        }
+      });
+    } catch {
+      // Ignore invalid pattern and continue masking by remaining rules.
+    }
+  });
+
+  return result;
+}
+
+export function maskJsonSensitiveData(source: unknown, config?: PrivacyMaskConfig): PrivacyMaskResult {
+  const normalizedConfig = normalizePrivacyMaskConfig(config);
+  const sensitiveKeys = new Set(normalizedConfig.keys.map((key) => key.toLowerCase()));
+  const pointersFromPatterns = collectMaskedPointersByPatterns(source, normalizedConfig.jsonPathPatterns);
+
+  const visit = (value: unknown, pointerSegments: string[], forceMask: boolean): { value: unknown; maskedCount: number } => {
+    const pointer = toJsonPointer(pointerSegments);
+    if (forceMask || pointersFromPatterns.has(pointer)) {
+      return {
+        value: maskValue(value, normalizedConfig),
+        maskedCount: 1,
+      };
+    }
+
+    if (Array.isArray(value)) {
+      let maskedCount = 0;
+      const maskedArray = value.map((item, index) => {
+        const next = visit(item, [...pointerSegments, String(index)], false);
+        maskedCount += next.maskedCount;
+        return next.value;
+      });
+      return {
+        value: maskedArray,
+        maskedCount,
+      };
+    }
+
+    if (!isMergeObject(value)) {
+      return {
+        value,
+        maskedCount: 0,
+      };
+    }
+
+    let maskedCount = 0;
+    const maskedObject = Object.entries(value).reduce(
+      (result, [key, childValue]) => {
+        const shouldMaskByKey = sensitiveKeys.has(key.toLowerCase());
+        const next = visit(childValue, [...pointerSegments, key], shouldMaskByKey);
+        maskedCount += next.maskedCount;
+        result[key] = next.value;
+        return result;
+      },
+      {} as Record<string, unknown>,
+    );
+
+    return {
+      value: maskedObject,
+      maskedCount,
+    };
+  };
+
+  const masked = visit(source, [], false);
+  return {
+    masked: masked.value,
+    maskedCount: masked.maskedCount,
+    pathPatternMatchCount: pointersFromPatterns.size,
   };
 }
 

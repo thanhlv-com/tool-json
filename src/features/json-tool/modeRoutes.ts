@@ -5,6 +5,8 @@ export const MODE_PATHS: Record<Mode, string> = {
   diff: '/diff',
   merge: '/merge',
   query: '/query',
+  pipeline: '/pipeline',
+  privacy: '/privacy',
   convert: '/convert',
   schemaGenerate: '/schema-generate',
   schemaValidate: '/schema-validate',
