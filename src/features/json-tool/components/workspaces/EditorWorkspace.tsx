@@ -28,6 +28,8 @@ type ArrayHintWidget = {
   };
 };
 
+const MAX_HINT_CONTENT_LENGTH = 120_000;
+
 function isIdentifierSegment(segment: string): boolean {
   return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(segment);
 }
@@ -190,6 +192,10 @@ function applyArrayCountWidgets(
   }
 
   removeArrayHintWidgets(editor, previousWidgets);
+
+  if (model.getValueLength() > MAX_HINT_CONTENT_LENGTH) {
+    return [];
+  }
 
   const hints = collectValueHints(model.getValue(), language);
   const widgets: ArrayHintWidget[] = hints.map((hint, index) => {

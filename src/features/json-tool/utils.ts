@@ -515,6 +515,8 @@ export type JsonDiffReport = {
   operationCount: number;
   operations: Operation[];
   details: JsonDiffDetail[];
+  detailsTruncated: boolean;
+  detailLimit: number;
   summary: {
     added: number;
     removed: number;
@@ -740,7 +742,13 @@ function createDetail(
   };
 }
 
-export function generateJsonDiffReport(original: unknown, modified: unknown): JsonDiffReport {
+export function generateJsonDiffReport(
+  original: unknown,
+  modified: unknown,
+  options?: {
+    maxDetails?: number;
+  },
+): JsonDiffReport {
   let operations: Operation[] = [];
 
   if (isObjectLike(original) && isObjectLike(modified)) {
@@ -763,13 +771,20 @@ export function generateJsonDiffReport(original: unknown, modified: unknown): Js
     { added: 0, removed: 0, changed: 0 },
   );
 
-  const details = operations.map((operation, index) => createDetail(operation, index, original, modified));
+  const detailLimit =
+    typeof options?.maxDetails === 'number' && Number.isFinite(options.maxDetails) && options.maxDetails > 0
+      ? Math.floor(options.maxDetails)
+      : operations.length;
+  const details = operations.slice(0, detailLimit).map((operation, index) => createDetail(operation, index, original, modified));
+  const detailsTruncated = operations.length > detailLimit;
 
   return {
     equal: operations.length === 0,
     operationCount: operations.length,
     operations,
     details,
+    detailsTruncated,
+    detailLimit,
     summary,
   };
 }

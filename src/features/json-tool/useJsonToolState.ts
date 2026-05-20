@@ -109,6 +109,14 @@ type SharePayload = {
 
 const SHARE_QUERY_PARAM = 'share';
 const SHARE_VERSION = 1;
+const LARGE_INPUT_SIZE_THRESHOLD = 200_000;
+const BASE_AUTO_PROCESS_DEBOUNCE_MS = 120;
+const LARGE_AUTO_PROCESS_DEBOUNCE_MS = 450;
+const LARGE_DIFF_SIZE_THRESHOLD = 300_000;
+const BASE_DIFF_DEBOUNCE_MS = 80;
+const LARGE_DIFF_DEBOUNCE_MS = 400;
+const MAX_DIFF_DETAILS_DEFAULT = 600;
+const MAX_DIFF_DETAILS_FOR_LARGE_INPUT = 200;
 
 function createDefaultInputByMode(value: string): Record<InputMode, string> {
   return INPUT_MODES.reduce(
@@ -321,6 +329,13 @@ export function useJsonToolState(mode: Mode) {
   const inputMode: InputMode = mode === 'diff' || mode === 'patch' || mode === 'merge' ? 'format' : mode;
   const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
   const csvInputLooksLikeJson = mode === 'convertCsv' && isLikelyJsonInput(input);
+  const autoProcessInputSize = mode === 'schemaValidate' ? input.length + schemaInput.length : input.length;
+  const autoProcessDebounceMs =
+    autoProcessInputSize > LARGE_INPUT_SIZE_THRESHOLD ? LARGE_AUTO_PROCESS_DEBOUNCE_MS : BASE_AUTO_PROCESS_DEBOUNCE_MS;
+  const diffInputSize = diffOriginal.length + diffModified.length;
+  const diffDebounceMs = diffInputSize > LARGE_DIFF_SIZE_THRESHOLD ? LARGE_DIFF_DEBOUNCE_MS : BASE_DIFF_DEBOUNCE_MS;
+  const diffMaxDetails =
+    diffInputSize > LARGE_DIFF_SIZE_THRESHOLD ? MAX_DIFF_DETAILS_FOR_LARGE_INPUT : MAX_DIFF_DETAILS_DEFAULT;
 
   const setInput = useCallback(
     (value: string) => {
@@ -774,41 +789,55 @@ export function useJsonToolState(mode: Mode) {
   }, [handleMergeJson, mode]);
 
   useEffect(() => {
+    if (mode !== 'diff') {
+      return;
+    }
+
     if (!diffOriginal.trim() && !diffModified.trim()) {
       setDiffReport(null);
       setDiffParseError(null);
       return;
     }
 
-    try {
-      let originalParsed: unknown;
-      let modifiedParsed: unknown;
-
+    const diffTimer = window.setTimeout(() => {
       try {
-        originalParsed = JSON.parse(diffOriginal);
-      } catch (error: any) {
-        throw new Error(`Original JSON invalid: ${error.message}`);
-      }
+        let originalParsed: unknown;
+        let modifiedParsed: unknown;
 
-      try {
-        modifiedParsed = JSON.parse(diffModified);
-      } catch (error: any) {
-        throw new Error(`Modified JSON invalid: ${error.message}`);
-      }
+        try {
+          originalParsed = JSON.parse(diffOriginal);
+        } catch (error: any) {
+          throw new Error(`Original JSON invalid: ${error.message}`);
+        }
 
-      setDiffReport(generateJsonDiffReport(originalParsed, modifiedParsed));
-      setDiffParseError(null);
-    } catch (error: any) {
-      setDiffReport(null);
-      setDiffParseError(error.message);
-    }
-  }, [diffModified, diffOriginal]);
+        try {
+          modifiedParsed = JSON.parse(diffModified);
+        } catch (error: any) {
+          throw new Error(`Modified JSON invalid: ${error.message}`);
+        }
+
+        setDiffReport(generateJsonDiffReport(originalParsed, modifiedParsed, { maxDetails: diffMaxDetails }));
+        setDiffParseError(null);
+      } catch (error: any) {
+        setDiffReport(null);
+        setDiffParseError(error.message);
+      }
+    }, diffDebounceMs);
+
+    return () => window.clearTimeout(diffTimer);
+  }, [diffDebounceMs, diffMaxDetails, diffModified, diffOriginal, mode]);
 
   useEffect(() => {
-    if (mode !== 'diff' && mode !== 'patch' && mode !== 'merge') {
-      processJson();
+    if (mode === 'diff' || mode === 'patch' || mode === 'merge') {
+      return;
     }
-  }, [mode, processJson, jsonPath, schemaInput, csvOptions, schemaDraft, schemaCustomKeywordsInput]);
+
+    const processTimer = window.setTimeout(() => {
+      processJson();
+    }, autoProcessDebounceMs);
+
+    return () => window.clearTimeout(processTimer);
+  }, [autoProcessDebounceMs, mode, processJson]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

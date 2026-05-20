@@ -67,6 +67,15 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 - Đã triển khai: nút `Share` có trên tất cả action bar, payload được encode trong query `?share=...`.
 - Hành vi hiện tại: link share chứa mode + state theo mode; khi mở link app tự điều hướng về route canonical của mode trong payload rồi restore dữ liệu.
 
+### 12) Tối ưu hiệu năng cho JSON lớn (Phase 1)
+
+- Trạng thái: Done.
+Đã triển khai:
+- Debounce auto-processing cho các mode xử lý tức thời, với delay lớn hơn khi input lớn.
+- Debounce tính diff report và giới hạn số `Diff Details` render cho dữ liệu lớn để tránh nghẽn UI.
+- Tự tắt array/type hints khi nội dung editor vượt ngưỡng kích thước lớn.
+- Hành vi hiện tại: thao tác nhập/chỉnh sửa ở payload lớn mượt hơn rõ rệt so với xử lý tức thời mỗi phím gõ.
+
 ## 2. Next Priorities (chưa triển khai)
 
 ### 1) Bộ test tự động
@@ -78,7 +87,7 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 ### 2) Tối ưu hiệu năng cho JSON lớn
 
 - Mục tiêu: giữ trải nghiệm mượt khi xử lý payload lớn (vài MB đến hàng chục MB).
-- Phạm vi kỹ thuật: chuyển parse/transform nặng sang Web Worker, debounce tác vụ tự chạy, và giới hạn render chi tiết khi dữ liệu quá lớn.
+- Phạm vi kỹ thuật: Phase 2 chuyển parse/transform nặng sang Web Worker (off-main-thread) và thêm cancelation cho job cũ khi người dùng tiếp tục nhập.
 - Tiêu chí hoàn thành: thao tác cơ bản (mở mode, validate, convert, query) vẫn phản hồi tốt với file lớn và không treo UI.
 
 ### 3) JSON Tree Explorer + Path Inspector

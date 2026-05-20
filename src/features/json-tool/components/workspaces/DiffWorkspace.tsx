@@ -40,6 +40,11 @@ export function DiffWorkspace({
 
     return (
       <div className="flex-1 overflow-auto pr-2">
+        {diffReport.detailsTruncated && (
+          <div className="mb-2 rounded border border-[#3A2F1A] bg-[#20180F] px-3 py-2 text-[11px] text-amber-300">
+            Showing first {diffReport.detailLimit} diff details out of {diffReport.operationCount} changes to keep the UI responsive.
+          </div>
+        )}
         <ul className="space-y-2">
           {diffReport.details.map((detail) => (
             <li key={detail.id} className="rounded border border-[#2E2E30] bg-[#121214] px-3 py-2">
