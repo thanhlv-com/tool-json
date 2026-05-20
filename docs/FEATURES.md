@@ -13,7 +13,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 - Component UI được nhóm theo thư mục:
 - `components/navigation`: `TopNavigation`.
 - `components/action-bars`: `ActionBar`/`DiffActionBar`/`MergeActionBar`/`PatchActionBar`.
-- `components/workspaces`: `EditorWorkspace`/`DiffWorkspace`/`MergeWorkspace`/`SchemaValidateWorkspace`/`PatchWorkspace`.
+- `components/workspaces`: `EditorWorkspace`/`DiffWorkspace`/`MergeWorkspace`/`SchemaValidateWorkspace`/`PatchWorkspace`/`TreeExplorerWorkspace`.
 
 ## 2. Mode và route
 
@@ -23,6 +23,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 | `diff` | `/diff` | So sánh JSON gốc và JSON sửa + panel diff details |
 | `merge` | `/merge` | Merge hai JSON structure thành một JSON duy nhất |
 | `query` | `/query` | JSONPath query |
+| `tree` | `/tree` | Tree explorer + path inspector cho JSON |
 | `convert` | `/convert` | Convert JSON -> YAML/XML/Properties |
 | `schemaGenerate` | `/schema-generate` | Sinh JSON Schema từ sample JSON |
 | `schemaValidate` | `/schema-validate` | Validate JSON data theo schema |
@@ -35,7 +36,7 @@ Legacy path:
 
 ## 3. State, persistence, và input
 
-- Có `Sync Input` cho nhóm mode thường (`format/query/convert/schemaGenerate/schemaValidate/convertCsv/escape`).
+- Có `Sync Input` cho nhóm mode thường (`format/query/tree/convert/schemaGenerate/schemaValidate/convertCsv/escape`).
 - Khi `Sync Input = true`, các mode trên dùng chung `sharedInput`.
 - Khi `Sync Input = false`, mỗi mode dùng input riêng (`inputByMode`).
 - `diff` dùng cặp input độc lập: `diffOriginal` và `diffModified`.
@@ -136,10 +137,18 @@ Legacy path:
 - `Apply Patch`: áp operations vào `BASE_JSON`, trả `PATCH_RESULT`.
 - `PATCH_OPERATIONS` có thể chỉnh tay trước khi apply.
 
+### 4.11 `/tree`
+
+- Input là JSON text editor (Monaco).
+- Panel phải gồm:
+- Tree explorer theo cấu trúc object/array, hỗ trợ expand/collapse từng node hoặc toàn bộ.
+- Path inspector cho node đang chọn (`JSONPath`, `JSON Pointer`, `type`, `depth`, `size`, `node value`).
+- Có thể jump đến node bằng JSON Pointer (`/a/0/b`) hoặc JSONPath (`$.a[0].b`).
+
 ## 5. Inline Type Hints trong editor
 
 - Hints hiển thị trực tiếp bên trong Monaco editor bằng `contentWidget` (không nằm ở toolbar/bar).
-- Hiển thị cho cả input và output editor (trừ mode diff/patch/schema-validate workspace chuyên biệt).
+- Hiển thị cho cả input và output editor (trừ các workspace chuyên biệt: diff/patch/schema-validate/tree).
 - Hints bao gồm:
 - JSON path (ví dụ `$.items[0].name`)
 - type (`object`, `array<...>`, `string`, `integer`, `number`, `boolean`, `null`)
@@ -149,6 +158,7 @@ Legacy path:
 ## 6. ActionBar, import/export, shortcut
 
 - Nút chính theo mode: `Validate`, `Generate`, `Validate Schema`, `Convert`, `Escape/Unescape`, `Generate Patch`, `Apply Patch`.
+- Với mode `/tree`, action chính vẫn là `Validate` để parse JSON nhanh, còn inspect path thao tác trong panel workspace.
 - Nút `Open` import file input có ở action bar mode thường; patch có `Open Base`, `Open Target`, `Open Patch`.
 - Nút `Share` có trên tất cả action bar; app tạo URL có query `?share=...` chứa state mode hiện tại, ưu tiên `navigator.share` và fallback copy link vào clipboard.
 - Khi mở share link, app tự đưa về mode nằm trong payload share (kể cả khi mở từ route khác) rồi mới load state tương ứng.
@@ -176,7 +186,7 @@ Legacy path:
 
 - Mobile/small screens:
 - Top navigation dùng `select` mode picker (`sm:hidden`) để tránh vỡ layout.
-- Main workspace tự giảm về 1 cột (stack theo chiều dọc) cho các mode editor/diff/merge/patch/schema-validate.
+- Main workspace tự giảm về 1 cột (stack theo chiều dọc) cho các mode editor/diff/merge/patch/schema-validate/tree.
 - Action bar tự wrap controls, không phụ thuộc nhiều vào hidden breakpoint như trước.
 - Large screens:
 - Top navigation chuyển sang tab ngang và cho phép cuộn ngang khi thiếu chỗ (`hidden sm:flex` + `overflow-x-auto`).

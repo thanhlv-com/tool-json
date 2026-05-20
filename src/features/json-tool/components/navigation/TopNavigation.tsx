@@ -3,6 +3,7 @@ import {
   Braces,
   Link2,
   FileCode2,
+  GitBranch,
   GitMerge,
   ShieldCheck,
   Sparkles,
@@ -41,6 +42,7 @@ export function TopNavigation({
     { value: 'diff', label: 'JSON Diff' },
     { value: 'merge', label: 'Merge' },
     { value: 'query', label: 'Path Query' },
+    { value: 'tree', label: 'Tree' },
     { value: 'convert', label: 'Convert' },
     { value: 'schemaGenerate', label: 'Schema' },
     { value: 'schemaValidate', label: 'Check' },
@@ -137,6 +139,14 @@ export function TopNavigation({
             }`}
           >
             <SearchCode className="w-3.5 h-3.5" /> Path Query
+          </button>
+          <button
+            onClick={() => onNavigateMode('tree')}
+            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+              mode === 'tree' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+            }`}
+          >
+            <GitBranch className="w-3.5 h-3.5" /> Tree
           </button>
           <button
             onClick={() => onNavigateMode('convert')}

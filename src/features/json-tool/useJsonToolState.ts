@@ -59,8 +59,8 @@ const DEFAULT_CSV_OPTIONS: CsvOptions = {
 
 type InputMode = Exclude<Mode, 'diff' | 'patch' | 'merge'>;
 
-const INPUT_MODES: InputMode[] = ['format', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape'];
-const ALL_MODES: Mode[] = ['format', 'diff', 'merge', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape', 'patch'];
+const INPUT_MODES: InputMode[] = ['format', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape', 'tree'];
+const ALL_MODES: Mode[] = ['format', 'diff', 'merge', 'query', 'convert', 'schemaGenerate', 'schemaValidate', 'convertCsv', 'escape', 'patch', 'tree'];
 
 type PersistedState = {
   version: 2;
@@ -622,6 +622,24 @@ export function useJsonToolState(mode: Mode) {
           return;
         }
 
+        if (mode === 'tree') {
+          setConvertSourceFormat(null);
+          setOutputLanguage('json');
+          const parsed = JSON.parse(customInput);
+          const prettyJson = JSON.stringify(parsed, null, 2);
+
+          if (action === 'format') {
+            setInput(prettyJson);
+            setOutput(prettyJson);
+            setErrorStatus({ message: 'Formatted input JSON', isError: false });
+            return;
+          }
+
+          setOutput(prettyJson);
+          setErrorStatus({ message: 'Valid JSON', isError: false });
+          return;
+        }
+
         if (mode === 'patch' || mode === 'diff' || mode === 'merge') {
           return;
         }
@@ -652,7 +670,7 @@ export function useJsonToolState(mode: Mode) {
         setErrorStatus({ message: `Parse Error: ${error.message}`, isError: true });
       }
     },
-    [convertTargetFormat, csvOptions, input, jsonPath, mode, schemaCustomKeywordsInput, schemaDraft, schemaInput],
+    [convertTargetFormat, csvOptions, input, jsonPath, mode, schemaCustomKeywordsInput, schemaDraft, schemaInput, setInput],
   );
 
   const handleGeneratePatch = useCallback(() => {
@@ -819,7 +837,7 @@ export function useJsonToolState(mode: Mode) {
     }
 
     const processTimer = window.setTimeout(() => {
-      processJson();
+      processJson(mode === 'tree' ? 'validate' : 'format');
     }, autoProcessDebounceMs);
 
     return () => window.clearTimeout(processTimer);
@@ -849,7 +867,7 @@ export function useJsonToolState(mode: Mode) {
 
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'm') {
         event.preventDefault();
-        if (mode !== 'patch' && mode !== 'merge') {
+        if (mode !== 'patch' && mode !== 'merge' && mode !== 'tree') {
           processJson('minify');
         }
       }

@@ -2,7 +2,14 @@ import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ActionBar, DiffActionBar, MergeActionBar, PatchActionBar } from './components/action-bars';
 import { TopNavigation } from './components/navigation';
-import { DiffWorkspace, EditorWorkspace, MergeWorkspace, PatchWorkspace, SchemaValidateWorkspace } from './components/workspaces';
+import {
+  DiffWorkspace,
+  EditorWorkspace,
+  MergeWorkspace,
+  PatchWorkspace,
+  SchemaValidateWorkspace,
+  TreeExplorerWorkspace,
+} from './components/workspaces';
 import { MODE_PATHS, getModeFromPathname, isValidModePath } from './modeRoutes';
 import { getPersistedLastMode, getSharedModeFromSearch, useJsonToolState } from './useJsonToolState';
 
@@ -246,6 +253,16 @@ export function JsonToolPage() {
                 onPatchBaseInputChange={setPatchBaseInput}
                 onPatchTargetInputChange={setPatchTargetInput}
                 onPatchOperationsInputChange={setPatchOperationsInput}
+              />
+            ) : mode === 'tree' ? (
+              <TreeExplorerWorkspace
+                theme={theme}
+                input={input}
+                onInputChange={setInput}
+                onInputValidate={handleEditorValidation}
+                onInputEditorMount={(editor) => {
+                  inputEditorRef.current = editor;
+                }}
               />
             ) : mode === 'schemaValidate' ? (
               <SchemaValidateWorkspace

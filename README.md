@@ -1,6 +1,6 @@
 # JSON Dev Tool
 
-Ứng dụng Vite + React + TypeScript để xử lý dữ liệu ngay trên trình duyệt: JSON format/validate, diff chi tiết, JSONPath query, JSON -> YAML/XML/Properties, JSON <-> CSV, escape/unescape, và JSON Patch (RFC 6902).
+Ứng dụng Vite + React + TypeScript để xử lý dữ liệu ngay trên trình duyệt: JSON format/validate, diff chi tiết, JSONPath query, JSON Tree Explorer + Path Inspector, JSON -> YAML/XML/Properties, JSON <-> CSV, escape/unescape, và JSON Patch (RFC 6902).
 
 ## Chạy local
 
@@ -27,6 +27,7 @@ npm run preview
 - `/diff`: so sánh hai JSON bằng Monaco DiffEditor, có `Format` cho cả 2 pane và panel diff chi tiết theo path.
 - `/merge`: merge hai cấu trúc JSON (`LEFT_JSON` + `RIGHT_JSON`) thành `MERGED_RESULT`.
 - `/query`: chạy JSONPath query trên input JSON.
+- `/tree`: khám phá cây JSON (expand/collapse) và inspect path/node theo JSON Pointer hoặc JSONPath.
 - `/convert`: convert từ JSON sang `YAML`, `XML`, hoặc `Properties` (input bắt buộc là JSON hợp lệ).
 - `/schema-generate`: tạo JSON Schema từ sample JSON.
 - `/schema-validate`: validate JSON data theo JSON Schema (chọn draft + custom keywords).

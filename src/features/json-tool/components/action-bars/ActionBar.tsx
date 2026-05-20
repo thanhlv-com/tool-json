@@ -50,6 +50,7 @@ type ActionBarProps = {
 function getInputAccept(mode: Exclude<Mode, 'diff' | 'patch' | 'merge'>): string {
   if (mode === 'convertCsv') return '.json,.csv,.tsv,.txt';
   if (mode === 'convert') return '.json';
+  if (mode === 'tree') return '.json';
   if (mode === 'escape') return '.txt,.json';
   return '.json,.txt';
 }
@@ -83,12 +84,13 @@ export function ActionBar({
 }: ActionBarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const hideFormatMinify =
+  const hideFormat =
     mode === 'query' ||
     mode === 'schemaGenerate' ||
     mode === 'schemaValidate' ||
     mode === 'convertCsv' ||
     mode === 'escape';
+  const hideMinify = hideFormat || mode === 'tree';
 
   const actionLabel =
     mode === 'schemaGenerate'
@@ -118,7 +120,7 @@ export function ActionBar({
   return (
     <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between px-3 sm:px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-2">
       <div className="flex flex-wrap gap-2">
-        {!hideFormatMinify && (
+        {!hideFormat && (
           <button
             onClick={onFormat}
             className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
@@ -126,7 +128,7 @@ export function ActionBar({
             <AlignLeft className="w-3.5 h-3.5" /> Format
           </button>
         )}
-        {!hideFormatMinify && (
+        {!hideMinify && (
           <button
             onClick={onMinify}
             className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"

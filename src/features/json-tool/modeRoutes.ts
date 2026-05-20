@@ -11,6 +11,7 @@ export const MODE_PATHS: Record<Mode, string> = {
   convertCsv: '/csv',
   escape: '/escape',
   patch: '/patch',
+  tree: '/tree',
 };
 
 const LEGACY_PATH_TO_MODE: Record<string, Mode> = {

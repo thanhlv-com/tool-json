@@ -8,7 +8,8 @@ export type Mode =
   | 'schemaValidate'
   | 'convertCsv'
   | 'escape'
-  | 'patch';
+  | 'patch'
+  | 'tree';
 
 export type ThemeMode = 'vs-dark' | 'light';
 
