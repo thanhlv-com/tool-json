@@ -90,18 +90,6 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 - Phạm vi kỹ thuật: cho phép import nhiều schema, resolve `$ref` nội bộ/ngoại vi, và hiển thị lỗi theo schema nguồn.
 - Tiêu chí hoàn thành: validate thành công với bộ schema nhiều file và báo lỗi rõ ràng theo path + schema id.
 
-### 4) JSON Transform pipeline (nhiều bước)
-
-- Mục tiêu: gom nhiều thao tác liên tiếp thành một pipeline có thể tái sử dụng.
-- Phạm vi kỹ thuật: định nghĩa chuỗi bước (format/query/convert/escape/patch...), preview kết quả từng bước, clone/chỉnh sửa pipeline.
-- Tiêu chí hoàn thành: người dùng tạo được pipeline hoàn chỉnh và áp dụng lại cho input khác mà không thao tác thủ công từng mode.
-
-### 5) Privacy mode và data masking
-
-- Mục tiêu: an toàn hơn khi xử lý dữ liệu nhạy cảm trước khi share/copy/export.
-- Phạm vi kỹ thuật: rule mask theo key/pattern (`token`, `email`, `phone`, `authorization`...), toggle hiển thị dữ liệu gốc/masked, cảnh báo trước khi share link.
-- Tiêu chí hoàn thành: output/share/copy có thể loại bỏ hoặc che dữ liệu nhạy cảm theo cấu hình người dùng.
-
 ### 6) Workspace history và snapshot
 
 - Mục tiêu: giúp quay lại trạng thái trước đó khi thao tác sai hoặc thử nhiều phương án.
