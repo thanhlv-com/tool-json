@@ -88,6 +88,28 @@ type PersistedState = {
   lastMode: Mode;
 };
 
+type SharePayload = {
+  version: 1;
+  mode: Mode;
+  input?: string;
+  jsonPath?: string;
+  convertTargetFormat?: ConvertTargetFormat;
+  csvOptions?: Partial<CsvOptions>;
+  schemaInput?: string;
+  schemaDraft?: SchemaDraft;
+  schemaCustomKeywordsInput?: string;
+  diffOriginal?: string;
+  diffModified?: string;
+  patchBaseInput?: string;
+  patchTargetInput?: string;
+  patchOperationsInput?: string;
+  mergeLeftInput?: string;
+  mergeRightInput?: string;
+};
+
+const SHARE_QUERY_PARAM = 'share';
+const SHARE_VERSION = 1;
+
 function createDefaultInputByMode(value: string): Record<InputMode, string> {
   return INPUT_MODES.reduce(
     (result, inputMode) => {
@@ -129,6 +151,88 @@ function createDefaultPersistedState(): PersistedState {
 function isLikelyJsonInput(value: string): boolean {
   const trimmed = value.trim();
   return trimmed.startsWith('{') || trimmed.startsWith('[');
+}
+
+function isConvertTargetFormat(value: unknown): value is ConvertTargetFormat {
+  return value === 'yaml' || value === 'xml' || value === 'properties';
+}
+
+function isSchemaDraft(value: unknown): value is SchemaDraft {
+  return value === 'draft-07' || value === '2019-09' || value === '2020-12';
+}
+
+function normalizeCsvOptions(options: Partial<CsvOptions> | undefined): CsvOptions | null {
+  if (!options) {
+    return null;
+  }
+
+  return {
+    delimiter:
+      options.delimiter === ',' || options.delimiter === ';' || options.delimiter === '\t'
+        ? options.delimiter
+        : DEFAULT_CSV_OPTIONS.delimiter,
+    hasHeaderRow: typeof options.hasHeaderRow === 'boolean' ? options.hasHeaderRow : DEFAULT_CSV_OPTIONS.hasHeaderRow,
+    quoteStrategy:
+      options.quoteStrategy === 'auto' || options.quoteStrategy === 'always'
+        ? options.quoteStrategy
+        : DEFAULT_CSV_OPTIONS.quoteStrategy,
+    escapeStrategy:
+      options.escapeStrategy === 'double' || options.escapeStrategy === 'backslash'
+        ? options.escapeStrategy
+        : DEFAULT_CSV_OPTIONS.escapeStrategy,
+  };
+}
+
+function encodeBase64Url(value: string): string {
+  const encodedBytes = new TextEncoder().encode(value);
+  let binary = '';
+
+  encodedBytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function decodeBase64Url(value: string): string {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = (4 - (normalized.length % 4)) % 4;
+  const base64 = `${normalized}${'='.repeat(padding)}`;
+  const binary = atob(base64);
+  const decodedBytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+
+  return new TextDecoder().decode(decodedBytes);
+}
+
+function parseSharePayload(encodedValue: string): SharePayload | null {
+  try {
+    const decodedJson = decodeBase64Url(encodedValue);
+    const parsed = JSON.parse(decodedJson) as Partial<SharePayload>;
+
+    if (!parsed || parsed.version !== SHARE_VERSION) {
+      return null;
+    }
+
+    if (!parsed.mode || !ALL_MODES.includes(parsed.mode)) {
+      return null;
+    }
+
+    return parsed as SharePayload;
+  } catch {
+    return null;
+  }
+}
+
+export function getSharedModeFromSearch(search: string): Mode | null {
+  const searchParams = new URLSearchParams(search);
+  const encodedSharePayload = searchParams.get(SHARE_QUERY_PARAM);
+
+  if (!encodedSharePayload) {
+    return null;
+  }
+
+  const payload = parseSharePayload(encodedSharePayload);
+  return payload?.mode ?? null;
 }
 
 function loadPersistedState(): PersistedState {
@@ -213,6 +317,7 @@ export function useJsonToolState(mode: Mode) {
   const inputEditorRef = useRef<any>(null);
   const outputEditorRef = useRef<any>(null);
   const schemaEditorRef = useRef<any>(null);
+  const appliedShareTokenRef = useRef<string | null>(null);
   const inputMode: InputMode = mode === 'diff' || mode === 'patch' || mode === 'merge' ? 'format' : mode;
   const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
   const csvInputLooksLikeJson = mode === 'convertCsv' && isLikelyJsonInput(input);
@@ -257,6 +362,83 @@ export function useJsonToolState(mode: Mode) {
       return createDefaultInputByMode(sharedInput);
     });
   }, [sharedInput, syncInputAcrossModes]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    const encodedSharePayload = url.searchParams.get(SHARE_QUERY_PARAM);
+
+    if (!encodedSharePayload) {
+      appliedShareTokenRef.current = null;
+      return;
+    }
+
+    const currentShareToken = `${mode}:${encodedSharePayload}`;
+    if (appliedShareTokenRef.current === currentShareToken) {
+      return;
+    }
+
+    const payload = parseSharePayload(encodedSharePayload);
+    if (!payload) {
+      appliedShareTokenRef.current = currentShareToken;
+      setErrorStatus({ message: 'Invalid share link payload', isError: true });
+      return;
+    }
+
+    if (payload.mode !== mode) {
+      return;
+    }
+
+    if (mode === 'diff') {
+      setDiffOriginal(payload.diffOriginal ?? '');
+      setDiffModified(payload.diffModified ?? '');
+    } else if (mode === 'patch') {
+      setPatchBaseInput(payload.patchBaseInput ?? '');
+      setPatchTargetInput(payload.patchTargetInput ?? '');
+      setPatchOperationsInput(payload.patchOperationsInput ?? '');
+    } else if (mode === 'merge') {
+      setMergeLeftInput(payload.mergeLeftInput ?? '');
+      setMergeRightInput(payload.mergeRightInput ?? '');
+    } else {
+      const sharedValue = payload.input ?? '';
+      const currentInputMode = mode as InputMode;
+
+      setSharedInput(sharedValue);
+      setInputByMode((previous) => ({
+        ...previous,
+        [currentInputMode]: sharedValue,
+      }));
+
+      if (mode === 'query') {
+        setJsonPath(payload.jsonPath ?? '$');
+      }
+
+      if (mode === 'convert' && isConvertTargetFormat(payload.convertTargetFormat)) {
+        setConvertTargetFormat(payload.convertTargetFormat);
+      }
+
+      if (mode === 'convertCsv') {
+        const nextCsvOptions = normalizeCsvOptions(payload.csvOptions);
+        if (nextCsvOptions) {
+          setCsvOptions(nextCsvOptions);
+        }
+      }
+
+      if (mode === 'schemaValidate') {
+        setSchemaInput(payload.schemaInput ?? '');
+        setSchemaCustomKeywordsInput(payload.schemaCustomKeywordsInput ?? '');
+        if (isSchemaDraft(payload.schemaDraft)) {
+          setSchemaDraft(payload.schemaDraft);
+        }
+      }
+    }
+
+    setErrorStatus({ message: 'Loaded shared link data', isError: false });
+    appliedShareTokenRef.current = currentShareToken;
+  }, [mode]);
 
   const processJson = useCallback(
     (action: ProcessAction = 'format', customInput = input) => {
@@ -738,6 +920,115 @@ export function useJsonToolState(mode: Mode) {
     }
   }, []);
 
+  const createSharePayload = useCallback((): SharePayload => {
+    if (mode === 'diff') {
+      return {
+        version: SHARE_VERSION,
+        mode,
+        diffOriginal,
+        diffModified,
+      };
+    }
+
+    if (mode === 'patch') {
+      return {
+        version: SHARE_VERSION,
+        mode,
+        patchBaseInput,
+        patchTargetInput,
+        patchOperationsInput,
+      };
+    }
+
+    if (mode === 'merge') {
+      return {
+        version: SHARE_VERSION,
+        mode,
+        mergeLeftInput,
+        mergeRightInput,
+      };
+    }
+
+    const payload: SharePayload = {
+      version: SHARE_VERSION,
+      mode,
+      input,
+    };
+
+    if (mode === 'query') {
+      payload.jsonPath = jsonPath;
+    }
+
+    if (mode === 'convert') {
+      payload.convertTargetFormat = convertTargetFormat;
+    }
+
+    if (mode === 'convertCsv') {
+      payload.csvOptions = csvOptions;
+    }
+
+    if (mode === 'schemaValidate') {
+      payload.schemaInput = schemaInput;
+      payload.schemaDraft = schemaDraft;
+      payload.schemaCustomKeywordsInput = schemaCustomKeywordsInput;
+    }
+
+    return payload;
+  }, [
+    convertTargetFormat,
+    csvOptions,
+    diffModified,
+    diffOriginal,
+    input,
+    jsonPath,
+    mergeLeftInput,
+    mergeRightInput,
+    mode,
+    patchBaseInput,
+    patchOperationsInput,
+    patchTargetInput,
+    schemaCustomKeywordsInput,
+    schemaDraft,
+    schemaInput,
+  ]);
+
+  const handleShare = useCallback(async () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const sharePayload = createSharePayload();
+    const encodedSharePayload = encodeBase64Url(JSON.stringify(sharePayload));
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set(SHARE_QUERY_PARAM, encodedSharePayload);
+
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({
+          title: 'JSON Dev Tool',
+          text: `JSON Dev Tool - ${mode}`,
+          url: shareUrl.toString(),
+        });
+        setErrorStatus({ message: 'Shared successfully', isError: false });
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareUrl.toString());
+      setErrorStatus({ message: 'Share link copied', isError: false });
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(shareUrl.toString());
+        setErrorStatus({ message: 'Share link copied', isError: false });
+      } catch {
+        setErrorStatus({ message: 'Cannot share on this browser', isError: true });
+      }
+    }
+  }, [createSharePayload, mode]);
+
   const downloadFile = useCallback((content: string, filename: string) => {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -927,6 +1218,7 @@ export function useJsonToolState(mode: Mode) {
     handleExpandAll,
     handleCollapseAll,
     copyToClipboard,
+    handleShare,
     downloadFile,
     importInputFile,
     importPatchBaseFile,

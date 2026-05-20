@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { AlignLeft, CheckCircle2, Copy, Download, GitMerge, Upload, XCircle } from 'lucide-react';
+import { AlignLeft, CheckCircle2, Copy, Download, GitMerge, Share2, Upload, XCircle } from 'lucide-react';
 import type { ErrorStatus } from '../../types';
 
 type MergeActionBarProps = {
@@ -7,6 +7,7 @@ type MergeActionBarProps = {
   errorStatus: ErrorStatus;
   onMerge: () => void;
   onFormat: () => void;
+  onShare: () => void;
   onCopy: (text: string) => void;
   onDownload: (content: string, filename: string) => void;
   onImportLeftFile: (file: File) => void;
@@ -18,6 +19,7 @@ export function MergeActionBar({
   errorStatus,
   onMerge,
   onFormat,
+  onShare,
   onCopy,
   onDownload,
   onImportLeftFile,
@@ -96,6 +98,12 @@ export function MergeActionBar({
         )}
 
         <div className="h-4 w-[1px] bg-[#333]"></div>
+        <button
+          onClick={onShare}
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <Share2 className="w-3.5 h-3.5" /> Share
+        </button>
         <button
           onClick={() => onCopy(output)}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"

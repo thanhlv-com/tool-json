@@ -5,6 +5,7 @@ import {
   Copy,
   Download,
   Minimize2,
+  Share2,
   Upload,
   XCircle,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ type ActionBarProps = {
   onFormat: () => void;
   onMinify: () => void;
   onValidate: () => void;
+  onShare: () => void;
   onCopy: (text: string) => void;
   onDownload: (content: string, filename: string) => void;
   onImportInputFile: (file: File) => void;
@@ -68,6 +70,7 @@ export function ActionBar({
   onFormat,
   onMinify,
   onValidate,
+  onShare,
   onCopy,
   onDownload,
   onImportInputFile,
@@ -278,6 +281,12 @@ export function ActionBar({
         )}
 
         <div className="h-4 w-[1px] bg-[#333]"></div>
+        <button
+          onClick={onShare}
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <Share2 className="w-3.5 h-3.5" /> Share
+        </button>
         <button
           onClick={() => onCopy(output)}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"

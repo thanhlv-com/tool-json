@@ -149,6 +149,7 @@ Legacy path:
 
 - Nút chính theo mode: `Validate`, `Generate`, `Validate Schema`, `Convert`, `Escape/Unescape`, `Generate Patch`, `Apply Patch`.
 - Nút `Open` import file input có ở action bar mode thường; patch có `Open Base`, `Open Target`, `Open Patch`.
+- Nút `Share` có trên tất cả action bar; app tạo URL có query `?share=...` chứa state mode hiện tại, ưu tiên `navigator.share` và fallback copy link vào clipboard.
 - `Copy` và `Down` thao tác trên output hiện tại.
 - Tên file download theo mode/output:
 - `result.yaml` cho YAML output.
@@ -167,7 +168,6 @@ Legacy path:
 
 - Chưa có test tự động (unit/integration/e2e).
 - Chưa có drag-and-drop file hoặc import nhiều file cùng lúc.
-- Chưa có shareable URL để mang theo mode/input/options.
 - `copyToClipboard` phụ thuộc quyền clipboard của browser.
 
 ## 8. Responsive behavior

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { CheckCircle2, Copy, Download, GitCompareArrows, Upload, Wand2, XCircle } from 'lucide-react';
+import { CheckCircle2, Copy, Download, GitCompareArrows, Share2, Upload, Wand2, XCircle } from 'lucide-react';
 import type { ErrorStatus } from '../../types';
 
 type PatchActionBarProps = {
@@ -7,6 +7,7 @@ type PatchActionBarProps = {
   errorStatus: ErrorStatus;
   onGeneratePatch: () => void;
   onApplyPatch: () => void;
+  onShare: () => void;
   onCopy: (text: string) => void;
   onDownload: (content: string, filename: string) => void;
   onImportBaseFile: (file: File) => void;
@@ -19,6 +20,7 @@ export function PatchActionBar({
   errorStatus,
   onGeneratePatch,
   onApplyPatch,
+  onShare,
   onCopy,
   onDownload,
   onImportBaseFile,
@@ -118,6 +120,12 @@ export function PatchActionBar({
         )}
 
         <div className="h-4 w-[1px] bg-[#333]"></div>
+        <button
+          onClick={onShare}
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <Share2 className="w-3.5 h-3.5" /> Share
+        </button>
         <button
           onClick={() => onCopy(output)}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"

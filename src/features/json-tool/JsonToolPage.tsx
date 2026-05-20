@@ -4,7 +4,7 @@ import { ActionBar, DiffActionBar, MergeActionBar, PatchActionBar } from './comp
 import { TopNavigation } from './components/navigation';
 import { DiffWorkspace, EditorWorkspace, MergeWorkspace, PatchWorkspace, SchemaValidateWorkspace } from './components/workspaces';
 import { MODE_PATHS, getModeFromPathname, isValidModePath } from './modeRoutes';
-import { getPersistedLastMode, useJsonToolState } from './useJsonToolState';
+import { getPersistedLastMode, getSharedModeFromSearch, useJsonToolState } from './useJsonToolState';
 
 export function JsonToolPage() {
   const location = useLocation();
@@ -13,10 +13,33 @@ export function JsonToolPage() {
 
   useEffect(() => {
     const normalizedPath = location.pathname.endsWith('/') && location.pathname !== '/' ? location.pathname.slice(0, -1) : location.pathname;
+    const sharedMode = getSharedModeFromSearch(location.search);
+
+    if (sharedMode) {
+      const sharedModePath = MODE_PATHS[sharedMode];
+      if (normalizedPath !== sharedModePath) {
+        navigate(
+          {
+            pathname: sharedModePath,
+            search: location.search,
+            hash: location.hash,
+          },
+          { replace: true },
+        );
+        return;
+      }
+    }
 
     if (!isValidModePath(location.pathname)) {
       const persistedMode = getPersistedLastMode();
-      navigate(MODE_PATHS[persistedMode ?? 'format'], { replace: true });
+      navigate(
+        {
+          pathname: MODE_PATHS[persistedMode ?? 'format'],
+          search: location.search,
+          hash: location.hash,
+        },
+        { replace: true },
+      );
       return;
     }
 
@@ -27,9 +50,16 @@ export function JsonToolPage() {
 
     const canonicalPath = MODE_PATHS[currentMode];
     if (normalizedPath !== canonicalPath) {
-      navigate(canonicalPath, { replace: true });
+      navigate(
+        {
+          pathname: canonicalPath,
+          search: location.search,
+          hash: location.hash,
+        },
+        { replace: true },
+      );
     }
-  }, [location.pathname, navigate]);
+  }, [location.hash, location.pathname, location.search, navigate]);
 
   const {
     input,
@@ -90,6 +120,7 @@ export function JsonToolPage() {
     handleExpandAll,
     handleCollapseAll,
     copyToClipboard,
+    handleShare,
     downloadFile,
     importInputFile,
     importPatchBaseFile,
@@ -123,13 +154,20 @@ export function JsonToolPage() {
 
         <div className="flex-1 flex flex-col min-h-0">
           {mode === 'diff' ? (
-            <DiffActionBar diffReport={diffReport} diffParseError={diffParseError} onFormat={handleFormatDiff} />
+            <DiffActionBar
+              diffReport={diffReport}
+              diffParseError={diffParseError}
+              errorStatus={errorStatus}
+              onFormat={handleFormatDiff}
+              onShare={handleShare}
+            />
           ) : mode === 'merge' ? (
             <MergeActionBar
               output={output}
               errorStatus={errorStatus}
               onMerge={handleMergeJson}
               onFormat={handleFormatMerge}
+              onShare={handleShare}
               onCopy={copyToClipboard}
               onDownload={downloadFile}
               onImportLeftFile={importMergeLeftFile}
@@ -141,6 +179,7 @@ export function JsonToolPage() {
               errorStatus={errorStatus}
               onGeneratePatch={handleGeneratePatch}
               onApplyPatch={handleApplyPatch}
+              onShare={handleShare}
               onCopy={copyToClipboard}
               onDownload={downloadFile}
               onImportBaseFile={importPatchBaseFile}
@@ -164,6 +203,7 @@ export function JsonToolPage() {
               onFormat={handleFormat}
               onMinify={handleMinify}
               onValidate={handleValidate}
+              onShare={handleShare}
               onCopy={copyToClipboard}
               onDownload={downloadFile}
               onImportInputFile={importInputFile}
