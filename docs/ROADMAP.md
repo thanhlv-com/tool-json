@@ -93,7 +93,7 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 ### 6) Workspace history và snapshot
 
 - Mục tiêu: giúp quay lại trạng thái trước đó khi thao tác sai hoặc thử nhiều phương án.
-- Phạm vi kỹ thuật: lưu snapshot theo mode, undo/redo ở cấp workflow, đặt tên snapshot và restore nhanh.
+- Phạm vi kỹ thuật: lưu snapshot theo mode, undo/redo ở cấp workflow, đặt tên snapshot và restore nhanh. Có thể cấu hin bật tắt giống `Type Hints`.
 - Tiêu chí hoàn thành: khôi phục được trạng thái input/options/output trước đó mà không cần dán lại thủ công.
 
 ### 7) Plugin architecture cho custom transforms
