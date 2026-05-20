@@ -69,21 +69,6 @@ Roadmap được cập nhật theo trạng thái code hiện tại (code-first).
 
 ## 2. Next Priorities (chưa triển khai)
 
-### 1) Bộ test tự động
+### 1. Backlog mở rộng
 
-- Mục tiêu: giảm regression khi thêm mode mới.
-- Phạm vi kỹ thuật: unit test cho `utils.ts`, integration test cho `useJsonToolState`, smoke E2E cho route chính bằng Playwright.
-- Tiêu chí hoàn thành: CI chạy test + lint + build trước merge.
-
-### 2) Plugin architecture cho custom transforms
-
-- Mục tiêu: mở rộng công cụ mà không sửa lõi nhiều.
-- Phạm vi kỹ thuật: định nghĩa interface `transformer` chuẩn và registry local cho custom action/mode.
-- Tiêu chí hoàn thành: thêm transform mới với thay đổi giới hạn trong module plugin.
-
-## 3. Backlog mở rộng
-
-- Multi-tab workspace cho nhiều phiên xử lý song song.
-- Batch processing (nhiều record/file).
-- Sensitive data masking trước khi copy/export.
 - Theme preset và font size preset cho editor.
