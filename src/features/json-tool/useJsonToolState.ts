@@ -117,6 +117,7 @@ const BASE_DIFF_DEBOUNCE_MS = 80;
 const LARGE_DIFF_DEBOUNCE_MS = 400;
 const MAX_DIFF_DETAILS_DEFAULT = 600;
 const MAX_DIFF_DETAILS_FOR_LARGE_INPUT = 200;
+const MAX_PERSIST_TEXT_LENGTH = 1_000_000;
 
 function createDefaultInputByMode(value: string): Record<InputMode, string> {
   return INPUT_MODES.reduce(
@@ -362,21 +363,6 @@ export function useJsonToolState(mode: Mode) {
     },
     [inputByMode, inputMode, sharedInput],
   );
-
-  useEffect(() => {
-    if (!syncInputAcrossModes) {
-      return;
-    }
-
-    setInputByMode((previous) => {
-      const allModesAlreadySynced = INPUT_MODES.every((inputModeKey) => previous[inputModeKey] === sharedInput);
-      if (allModesAlreadySynced) {
-        return previous;
-      }
-
-      return createDefaultInputByMode(sharedInput);
-    });
-  }, [sharedInput, syncInputAcrossModes]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1136,6 +1122,23 @@ export function useJsonToolState(mode: Mode) {
       return;
     }
 
+    const totalTextLength =
+      sharedInput.length +
+      schemaInput.length +
+      output.length +
+      diffOriginal.length +
+      diffModified.length +
+      patchBaseInput.length +
+      patchTargetInput.length +
+      patchOperationsInput.length +
+      mergeLeftInput.length +
+      mergeRightInput.length +
+      INPUT_MODES.reduce((sum, inputModeKey) => sum + inputByMode[inputModeKey].length, 0);
+
+    if (totalTextLength > MAX_PERSIST_TEXT_LENGTH) {
+      return;
+    }
+
     const nextState: PersistedState = {
       version: 2,
       sharedInput,
@@ -1162,7 +1165,11 @@ export function useJsonToolState(mode: Mode) {
       lastMode: mode,
     };
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+    } catch {
+      // Ignore storage quota errors for very large sessions.
+    }
   }, [
     convertSourceFormat,
     convertTargetFormat,
