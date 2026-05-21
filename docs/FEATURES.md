@@ -1,217 +1,155 @@
 # JSON Dev Tool - Current Features (Code-First)
 
-Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/json-tool/`.
+Tài liệu này mô tả hành vi thực tế theo code hiện tại trong `src/features/json-tool/`.
 
-## 1. Kiến trúc hiện tại
+## 1. Kiến trúc runtime
 
-- App dùng `BrowserRouter` + route wildcard (`*`) để render `JsonToolPage`.
-- Map mode theo path nằm trong `modeRoutes.ts`.
-- Path cũ `/yaml` vẫn được map sang mode `convert`, sau đó được canonical redirect sang `/convert`.
-- Nếu URL có `?share=...` hợp lệ, app ưu tiên mode trong payload share và tự điều hướng về canonical route của mode đó trước khi apply dữ liệu.
-- Nếu truy cập path không hợp lệ, app redirect về mode cuối trong `localStorage` (fallback `/editor`).
-- App được đóng gói dạng offline-first PWA qua `vite-plugin-pwa` (service worker + web manifest).
-- State và xử lý nghiệp vụ tập trung ở `useJsonToolState(mode)`.
-- Component UI được nhóm theo thư mục:
-- `components/navigation`: `TopNavigation`.
-- `components/action-bars`: `ActionBar`/`DiffActionBar`/`MergeActionBar`/`PatchActionBar`.
-- `components/workspaces`: `EditorWorkspace`/`DiffWorkspace`/`MergeWorkspace`/`SchemaValidateWorkspace`/`PatchWorkspace`/`TreeExplorerWorkspace`.
+- `App.tsx` dùng `BrowserRouter` và `AppRouter`.
+- `AppRouter` dùng route wildcard (`*`) và render `JsonToolPage` cho mọi path.
+- Mapping mode <-> route nằm tại `src/features/json-tool/modeRoutes.ts`.
+- Path legacy `/yaml` vẫn được nhận và canonical redirect sang `/convert`.
+- `JsonToolPage` tự xử lý canonical route, fallback route invalid, và share-route ưu tiên mode trong payload.
+- State/logic tập trung ở `useJsonToolState(mode)`.
 
 ## 2. Mode và route
 
-| Mode | Route canonical | Chức năng chính |
+| Mode | Route canonical | Mô tả |
 | --- | --- | --- |
-| `format` | `/editor` | Format, minify, validate JSON |
-| `diff` | `/diff` | So sánh JSON gốc và JSON sửa + panel diff details |
-| `merge` | `/merge` | Merge hai JSON structure thành một JSON duy nhất |
+| `format` | `/editor` | Format/minify/validate JSON |
+| `diff` | `/diff` | So sánh original/modified JSON + diff details |
+| `merge` | `/merge` | Merge hai JSON cấu trúc |
 | `query` | `/query` | JSONPath query |
-| `tree` | `/tree` | Tree explorer + path inspector cho JSON |
-| `convert` | `/convert` | Convert JSON -> YAML/XML/Properties/TypeScript DTO/Java DTO |
+| `pipeline` | `/pipeline` | Chạy chuỗi transform steps |
+| `privacy` | `/privacy` | Mask dữ liệu nhạy cảm |
+| `tree` | `/tree` | Tree explorer + path inspector |
+| `convert` | `/convert` | JSON -> YAML/XML/Properties/TypeScript DTO/Java DTO |
 | `schemaGenerate` | `/schema-generate` | Sinh JSON Schema từ sample JSON |
 | `schemaMock` | `/schema-mock` | Sinh mock data từ JSON Schema |
-| `schemaValidate` | `/schema-validate` | Validate JSON data theo schema |
-| `convertCsv` | `/csv` | Chuyển JSON <-> CSV |
-| `escape` | `/escape` | Escape/unescape chuỗi JSON |
-| `patch` | `/patch` | Generate và apply JSON Patch |
+| `schemaValidate` | `/schema-validate` | Validate JSON theo JSON Schema |
+| `convertCsv` | `/csv` | Chuyển đổi JSON <-> CSV/TSV |
+| `escape` | `/escape` | Escape/unescape text JSON string |
+| `patch` | `/patch` | Generate/apply JSON Patch (RFC 6902) |
 
-Legacy path:
-- `/yaml` -> mode `convert` -> redirect sang `/convert`.
+## 3. State, persistence, share
 
-## 3. State, persistence, và input
+- Local state được persist vào `localStorage` key `json-dev-tool.state.v2`.
+- Persist chứa mode cuối (`lastMode`), input/output/options/theme, và workspace history.
+- Route invalid sẽ fallback về mode cuối đã persist (hoặc `/editor` nếu chưa có dữ liệu).
+- `Sync Input` đồng bộ input giữa các mode editor thông thường; `schemaMock` luôn giữ input riêng.
+- Share dùng query `?share=...` (base64url payload), tự điều hướng về mode trong payload trước khi áp dữ liệu.
 
-- Có `Sync Input` cho nhóm mode thường (`format/query/tree/convert/schemaGenerate/schemaValidate/convertCsv/escape`).
-- Riêng `schemaMock` giữ input schema độc lập để luôn có ví dụ `JSON_SCHEMA` hợp lệ.
-- Khi `Sync Input = true`, các mode trên dùng chung `sharedInput`.
-- Khi `Sync Input = false`, mỗi mode dùng input riêng (`inputByMode`).
-- `diff` dùng cặp input độc lập: `diffOriginal` và `diffModified`.
-- `patch` dùng 3 input độc lập: `patchBaseInput`, `patchTargetInput`, `patchOperationsInput`.
-- Theme có 2 giá trị: `vs-dark` và `light`.
-- Toàn bộ state chính được persist vào `localStorage` key `json-dev-tool.state.v2`, gồm cả `showArrayHints` và `lastMode`.
+## 4. Workspace History
 
-## 4. Chi tiết từng mode
+- Có toggle `Workspace History` ở top navigation.
+- Mỗi mode có timeline snapshot riêng.
+- Hỗ trợ `Undo`, `Redo`, `Save Snapshot`, và restore snapshot theo dropdown.
+- Có auto snapshot theo debounce để giảm mất trạng thái khi thao tác liên tục.
 
-### 4.1 `/editor` (format)
+## 5. Keyboard shortcuts
 
-- Parse JSON và hỗ trợ `Format`, `Minify`, `Validate`.
-- `Format`: pretty JSON (`JSON.stringify(..., null, 2)`).
-- `Minify`: JSON một dòng.
-- `Validate`: validate + trả output pretty JSON.
-- Parse lỗi hiển thị `Parse Error: ...`.
+- `Ctrl/Cmd + Enter`: chạy action chính của mode.
+- `Ctrl/Cmd + Shift + F`: format (mode phù hợp).
+- `Ctrl/Cmd + Shift + M`: minify (mode phù hợp).
 
-### 4.2 `/diff`
+## 6. Hành vi từng nhóm mode
 
-- Dùng Monaco `DiffEditor`.
-- `originalEditable: true`, cả hai phía có thể chỉnh.
-- Có nút `Format` riêng cho diff để format lại original/modified JSON.
-- Có status summary (`Ops`, `+added`, `-removed`, `~changed`).
-- Có panel `Diff Details` hiển thị chi tiết từng operation theo path (ví dụ missing array item, type changed, value changed), kèm preview before/after.
-- Khi input không hợp lệ, hiển thị parse lỗi theo từng phía (`Original JSON invalid...`, `Modified JSON invalid...`).
+### 6.1 Editor / Query / Convert / Schema / CSV / Escape
 
-### 4.3 `/query`
+- Nhóm này dùng `EditorWorkspace` (2 pane input/output read-only).
+- Có `Type Hints` hiển thị inline trong Monaco (path + type + metadata keys/items) cho nội dung structured.
+- Có `Open`, `Share`, `Copy`, `Down` trên action bar.
 
-- Parse input JSON.
-- Chạy JSONPath bằng `jsonpath-plus`.
-- Output luôn là mảng kết quả query (JSON pretty).
-- Lỗi JSONPath hiển thị `Invalid JSONPath: ...`.
+### 6.2 Diff
 
-### 4.4 `/merge`
+- Desktop dùng Monaco `DiffEditor` side-by-side.
+- Mobile chuyển thành 2 editor stack (`ORIGINAL_JSON`, `MODIFIED_JSON`) để dễ thao tác màn hình hẹp.
+- Có diff summary (`+/-/~`) và danh sách diff details theo path.
 
-- Input gồm 2 editor độc lập: `LEFT_JSON` và `RIGHT_JSON`.
-- Kết quả được hiển thị ở `MERGED_RESULT` (read-only).
-- Quy tắc merge:
-- Object: merge sâu theo key.
-- Array: merge theo index, giữ phần tử còn lại và append item mới từ mảng bên phải.
-- Scalar hoặc khác kiểu: ưu tiên giá trị bên phải.
-- Có nút `Merge` để chạy hợp nhất và nút `Format` để format nhanh cả 2 input.
-- Status bar hiển thị summary: `ops`, `+keys`, `overwrite`, `+array`, `type-conflict`.
+### 6.3 Merge
 
-### 4.5 `/convert`
+- Input: `LEFT_JSON` + `RIGHT_JSON`.
+- Output: `MERGED_RESULT`.
+- Merge thống kê: `ops`, `+keys`, `overwrite`, `+array`, `type-conflict`.
 
-- Input bắt buộc là JSON hợp lệ.
-- Nếu JSON không hợp lệ, báo lỗi rõ ràng: `Convert mode only accepts valid JSON input: ...`.
-- Target hiện có:
-- `YAML`
-- `XML`
-- `Properties`
-- `TypeScript DTO`
-- `Java DTO`
-- Không còn target `JSON`.
-- `Minify` có tác dụng khi target là YAML/XML (compact output).
-- `Open` chỉ chấp nhận file `.json` ở mode này.
+### 6.4 Patch
 
-### 4.6 `/schema-generate`
+- Input: `BASE_JSON`, `TARGET_JSON`, `PATCH_OPERATIONS`.
+- Action:
+  - `Generate Patch`: sinh operations từ base/target.
+  - `Apply Patch`: áp operations lên base.
+- Output: `PATCH_RESULT`.
 
-- Parse sample JSON.
-- Sinh schema theo kiểu dữ liệu thực tế của input.
-- Mảng nhiều kiểu dùng `anyOf`.
-- Object tự điền `required` theo toàn bộ key hiện có.
-- Schema root có `$schema: draft-07`.
+### 6.5 Tree
 
-### 4.7 `/schema-mock`
+- Parse JSON input và hiển thị tree object/array.
+- Cho phép jump node bằng JSON Pointer (`/a/0/b`) hoặc JSONPath (`$.a[0].b`).
+- Inspector hiển thị pointer, jsonpath, type, size, value preview.
 
-- Input là JSON Schema.
-- Action chính: `Generate Mock`.
-- Có tham số `Rows` (1-200) để sinh 1 object hoặc danh sách object.
-- Generator hiện hỗ trợ các keyword phổ biến: `type`, `enum`, `const`, `default`, `example/examples`, `oneOf`, `anyOf`, `allOf`, `$ref` local, `required`, `min/max` cho number/string/array/object.
-- Với schema có `format` string, sinh dữ liệu theo format phổ biến (`email`, `uri/url`, `date-time`, `date`, `uuid`, `ipv4`).
+### 6.6 Pipeline
 
-### 4.8 `/schema-validate`
+- Input gồm `PIPELINE_INPUT` và `PIPELINE_STEPS` (JSON array).
+- Step types hỗ trợ:
+  - `query` (`path` JSONPath)
+  - `set` (`path` JSON Pointer, `value`)
+  - `remove` (`path` JSON Pointer)
+  - `pick` (`paths` JSON Pointer array)
+  - `mask` (`rules` tương thích privacy config)
+  - `convert` (`target`: `json|yaml|xml|properties`)
+- Output có thể là JSON/YAML/XML/Properties tùy step convert cuối cùng.
 
-- Input gồm 2 editor: `JSON_DATA` và `JSON_SCHEMA`.
-- Validate bằng AJV (`allErrors: true`, `strict: false`).
-- Cho phép chọn draft: `draft-07`, `2019-09`, `2020-12`.
-- Cho phép nhập custom keywords (danh sách phân tách dấu phẩy).
-- Output gồm `valid`, `draft`, `customKeywords`, `errorCount`, `errors[]` (`{ path, message, keyword }`).
-- Có `ERROR_PANEL` hiển thị danh sách lỗi chi tiết theo path.
+### 6.7 Privacy
 
-### 4.9 `/csv`
+- Input gồm `PRIVACY_INPUT` và `MASK_RULES`.
+- Rule config hỗ trợ:
+  - `keys`: danh sách tên field nhạy cảm (match theo lowercase key)
+  - `jsonPathPatterns`: danh sách JSONPath cần mask
+  - `maskText`: text thay thế
+  - `keepStartVisible`, `keepEndVisible`: giữ ký tự đầu/cuối
+- Có toggle `Masked-only preview`:
+  - Bật: output chỉ masked payload.
+  - Tắt: output gồm `masked`, `original`, và summary.
 
-- Tự nhận diện input:
-- Nếu text bắt đầu bằng `{` hoặc `[` thì convert JSON -> CSV.
-- Ngược lại convert CSV -> JSON.
-- JSON -> CSV hỗ trợ object array, array array, hoặc primitive list.
-- CSV options hỗ trợ:
-- Delimiter: `,`, `;`, `\t`.
-- Header row: bật/tắt.
-- Quote strategy: `auto` hoặc `always`.
-- Escape strategy: `double` (`""`) hoặc `backslash` (`\"`).
-- CSV -> JSON có parse kiểu cơ bản: number, boolean, null, JSON object/array trong cell.
-- Nếu có header nhưng không có body thì output `[]`.
+### 6.8 Convert
 
-### 4.10 `/escape`
+- Chỉ chấp nhận input JSON hợp lệ.
+- Target: YAML, XML, Properties, TypeScript DTO, Java DTO.
+- Download name đổi theo target (`result.yaml`, `result.xml`, `result.properties`, `RootDto.ts`, `RootDto.java`).
 
-- Nếu input parse được JSON và là string -> unescape.
-- Nếu input parse được JSON nhưng không phải string -> escape thành JSON string.
-- Nếu input không parse được JSON -> escape raw text thành JSON string.
+### 6.9 Schema Generate / Mock / Validate
 
-### 4.11 `/patch`
+- `/schema-generate`: sinh schema từ sample JSON.
+- `/schema-mock`: sinh mock data theo schema, có `Rows` (1..200), hỗ trợ `$ref` local, `oneOf/anyOf/allOf`, enum/const/default/format.
+- `/schema-validate`:
+  - Input gồm `JSON_DATA`, `JSON_SCHEMA`, `SCHEMA_IMPORTS`.
+  - Draft hỗ trợ: `draft-07`, `2019-09`, `2020-12`.
+  - Hỗ trợ custom keywords và imported schemas (array hoặc map).
+  - Có `ERROR_PANEL` hiển thị issue list.
 
-- Dùng `fast-json-patch` để xử lý RFC 6902.
-- `Generate Patch`: so sánh `BASE_JSON` và `TARGET_JSON`, sinh operations.
-- `Apply Patch`: áp operations vào `BASE_JSON`, trả `PATCH_RESULT`.
-- `PATCH_OPERATIONS` có thể chỉnh tay trước khi apply.
+### 6.10 CSV
 
-### 4.12 `/tree`
+- Detect hướng convert theo input:
+  - Bắt đầu bằng `{` hoặc `[` -> JSON -> CSV/TSV.
+  - Ngược lại -> CSV/TSV -> JSON.
+- Options: delimiter (`,`, `;`, tab), header, quote strategy, escape strategy.
+- Chỉ bật JSON validation/coloring khi input nhìn như JSON; input CSV thuần giữ plaintext.
 
-- Input là JSON text editor (Monaco).
-- Panel phải gồm:
-- Tree explorer theo cấu trúc object/array, hỗ trợ expand/collapse từng node hoặc toàn bộ.
-- Path inspector cho node đang chọn (`JSONPath`, `JSON Pointer`, `type`, `depth`, `size`, `node value`).
-- Có thể jump đến node bằng JSON Pointer (`/a/0/b`) hoặc JSONPath (`$.a[0].b`).
+## 7. Import/Export
 
-## 5. Inline Type Hints trong editor
+- Import:
+  - Mode thường: `Open` input.
+  - Patch: `Open Base`, `Open Target`, `Open Patch`.
+  - Merge: `Open Left`, `Open Right`.
+- Download tên file theo mode/output language (`.json`, `.yaml`, `.xml`, `.properties`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
 
-- Hints hiển thị trực tiếp bên trong Monaco editor bằng `contentWidget` (không nằm ở toolbar/bar).
-- Hiển thị cho cả input và output editor (trừ các workspace chuyên biệt: diff/patch/schema-validate/tree).
-- Hints bao gồm:
-- JSON path (ví dụ `$.items[0].name`)
-- type (`object`, `array<...>`, `string`, `integer`, `number`, `boolean`, `null`)
-- detail thêm (`items: n` cho array, `keys: n` cho object)
-- Có thể bật/tắt qua checkbox `Type Hints` ở top navigation.
+## 8. Responsive và PWA
 
-## 6. ActionBar, import/export, shortcut
+- Mobile dùng dropdown mode selector, desktop dùng tab ngang.
+- Layout workspace tự đổi số cột theo breakpoint.
+- PWA qua `vite-plugin-pwa`, có service worker + manifest, cache runtime cho page/static/font/image.
 
-- Nút chính theo mode: `Validate`, `Generate`, `Generate Mock`, `Validate Schema`, `Convert`, `Escape/Unescape`, `Generate Patch`, `Apply Patch`.
-- Với mode `/tree`, action chính vẫn là `Validate` để parse JSON nhanh, còn inspect path thao tác trong panel workspace.
-- Nút `Open` import file input có ở action bar mode thường; patch có `Open Base`, `Open Target`, `Open Patch`.
-- Nút `Share` có trên tất cả action bar; app tạo URL có query `?share=...` chứa state mode hiện tại, ưu tiên `navigator.share` và fallback copy link vào clipboard.
-- Khi mở share link, app tự đưa về mode nằm trong payload share (kể cả khi mở từ route khác) rồi mới load state tương ứng.
-- `Copy` và `Down` thao tác trên output hiện tại.
-- Tên file download theo mode/output:
-- `result.yaml` cho YAML output.
-- `result.xml` cho XML output.
-- `result.properties` cho Properties output.
-- `RootDto.ts` cho TypeScript DTO output.
-- `RootDto.java` cho Java DTO output.
-- `mock-data.json` cho schema mock mode.
-- `result.csv` hoặc `result.tsv` cho CSV output.
-- `result.txt` cho plaintext output ở escape mode.
-- `patch-result.json` cho patch mode.
-- Mặc định còn lại là `result.json`.
-- Shortcut:
-- `Ctrl/Cmd + Enter`: chạy validate (với patch mode là generate patch).
-- `Ctrl/Cmd + Shift + F`: format.
-- `Ctrl/Cmd + Shift + M`: minify.
+## 9. Validation checklist cho thay đổi feature
 
-## 7. Giới hạn hiện tại
-
-- Chưa có test tự động (unit/integration/e2e).
-- Chưa có drag-and-drop file hoặc import nhiều file cùng lúc.
-- `copyToClipboard` phụ thuộc quyền clipboard của browser.
-
-## 8. Responsive behavior
-
-- Mobile/small screens:
-- Top navigation dùng `select` mode picker (`sm:hidden`) để tránh vỡ layout.
-- Main workspace tự giảm về 1 cột (stack theo chiều dọc) cho các mode editor/diff/merge/patch/schema-validate/tree.
-- Action bar tự wrap controls, không phụ thuộc nhiều vào hidden breakpoint như trước.
-- Large screens:
-- Top navigation chuyển sang tab ngang và cho phép cuộn ngang khi thiếu chỗ (`hidden sm:flex` + `overflow-x-auto`).
-- Nội dung được giới hạn `max-width` để tránh vùng làm việc quá dàn trải trên màn hình rất rộng.
-
-## 9. Offline-first PWA
-
-- Build production sinh web manifest và service worker.
-- App precache các asset tĩnh quan trọng (HTML/CSS/JS/font/image/icon) để có thể mở lại khi offline.
-- Navigation request dùng `NetworkFirst` kèm fallback về cache, giúp ưu tiên nội dung mới khi có mạng nhưng vẫn usable khi mất mạng.
-- Static resources (`style/script/worker`) dùng `StaleWhileRevalidate` để cân bằng tốc độ và cập nhật.
-- Font dùng `CacheFirst`, image dùng `StaleWhileRevalidate`.
+1. `npm run lint`
+2. `npm run build`
+3. Verify thủ công các route bị ảnh hưởng.
+4. Sync lại `README.md`, `docs/FEATURES.md`, `docs/ROADMAP.md`, `AGENTS.md` khi route/behavior đổi.
