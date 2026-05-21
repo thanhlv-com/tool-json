@@ -971,6 +971,595 @@ export function convertJsonToProperties(value: unknown): string {
   return lines.join('\n');
 }
 
+type DtoInferredType =
+  | { kind: 'unknown' }
+  | { kind: 'null' }
+  | { kind: 'boolean' }
+  | { kind: 'integer' }
+  | { kind: 'number' }
+  | { kind: 'string' }
+  | { kind: 'array'; element: DtoInferredType }
+  | { kind: 'object'; properties: Record<string, { type: DtoInferredType; optional: boolean }> }
+  | { kind: 'union'; members: DtoInferredType[] };
+
+const TS_RESERVED_WORDS = new Set([
+  'break',
+  'case',
+  'catch',
+  'class',
+  'const',
+  'continue',
+  'debugger',
+  'default',
+  'delete',
+  'do',
+  'else',
+  'enum',
+  'export',
+  'extends',
+  'false',
+  'finally',
+  'for',
+  'function',
+  'if',
+  'import',
+  'in',
+  'instanceof',
+  'new',
+  'null',
+  'return',
+  'super',
+  'switch',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'typeof',
+  'var',
+  'void',
+  'while',
+  'with',
+  'as',
+  'implements',
+  'interface',
+  'let',
+  'package',
+  'private',
+  'protected',
+  'public',
+  'static',
+  'yield',
+  'any',
+  'boolean',
+  'constructor',
+  'declare',
+  'get',
+  'module',
+  'require',
+  'number',
+  'set',
+  'string',
+  'symbol',
+  'type',
+  'from',
+  'of',
+]);
+
+const JAVA_RESERVED_WORDS = new Set([
+  'abstract',
+  'assert',
+  'boolean',
+  'break',
+  'byte',
+  'case',
+  'catch',
+  'char',
+  'class',
+  'const',
+  'continue',
+  'default',
+  'do',
+  'double',
+  'else',
+  'enum',
+  'extends',
+  'final',
+  'finally',
+  'float',
+  'for',
+  'goto',
+  'if',
+  'implements',
+  'import',
+  'instanceof',
+  'int',
+  'interface',
+  'long',
+  'native',
+  'new',
+  'package',
+  'private',
+  'protected',
+  'public',
+  'return',
+  'short',
+  'static',
+  'strictfp',
+  'super',
+  'switch',
+  'synchronized',
+  'this',
+  'throw',
+  'throws',
+  'transient',
+  'try',
+  'void',
+  'volatile',
+  'while',
+  'true',
+  'false',
+  'null',
+  'record',
+  'sealed',
+  'permits',
+  'var',
+  'yield',
+]);
+
+function splitIdentifierWords(value: string): string[] {
+  const normalized = value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/[^A-Za-z0-9]+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return [];
+  }
+
+  return normalized.split(/\s+/).filter(Boolean);
+}
+
+function toPascalCase(value: string, fallback: string): string {
+  const words = splitIdentifierWords(value);
+  const base =
+    words.length > 0
+      ? words
+          .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+          .join('')
+      : fallback;
+
+  if (!base) {
+    return fallback;
+  }
+
+  return /^[0-9]/.test(base) ? `N${base}` : base;
+}
+
+function toCamelCase(value: string, fallback: string): string {
+  const pascal = toPascalCase(value, fallback);
+  if (!pascal) {
+    return fallback;
+  }
+
+  return `${pascal.charAt(0).toLowerCase()}${pascal.slice(1)}`;
+}
+
+function createUniqueName(base: string, usedNames: Set<string>): string {
+  let candidate = base;
+  let suffix = 2;
+
+  while (usedNames.has(candidate)) {
+    candidate = `${base}${suffix}`;
+    suffix += 1;
+  }
+
+  usedNames.add(candidate);
+  return candidate;
+}
+
+function isDtoObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function inferDtoType(value: unknown): DtoInferredType {
+  if (value === null) {
+    return { kind: 'null' };
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return {
+        kind: 'array',
+        element: { kind: 'unknown' },
+      };
+    }
+
+    const inferredElement = value
+      .map((item) => inferDtoType(item))
+      .reduce((current, next) => mergeDtoTypes(current, next));
+    return {
+      kind: 'array',
+      element: inferredElement,
+    };
+  }
+
+  if (isDtoObject(value)) {
+    const properties = Object.entries(value).reduce(
+      (result, [key, childValue]) => {
+        result[key] = {
+          type: inferDtoType(childValue),
+          optional: false,
+        };
+        return result;
+      },
+      {} as Record<string, { type: DtoInferredType; optional: boolean }>,
+    );
+
+    return {
+      kind: 'object',
+      properties,
+    };
+  }
+
+  if (typeof value === 'number') {
+    return {
+      kind: Number.isInteger(value) ? 'integer' : 'number',
+    };
+  }
+
+  if (typeof value === 'string') {
+    return { kind: 'string' };
+  }
+
+  if (typeof value === 'boolean') {
+    return { kind: 'boolean' };
+  }
+
+  return { kind: 'unknown' };
+}
+
+function serializeDtoType(type: DtoInferredType): string {
+  if (type.kind === 'array') {
+    return `array(${serializeDtoType(type.element)})`;
+  }
+
+  if (type.kind === 'object') {
+    const serializedProperties = Object.keys(type.properties)
+      .sort()
+      .map((key) => {
+        const property = type.properties[key];
+        return `${JSON.stringify(key)}${property.optional ? '?' : ''}:${serializeDtoType(property.type)}`;
+      })
+      .join(',');
+    return `object({${serializedProperties}})`;
+  }
+
+  if (type.kind === 'union') {
+    return `union(${type.members.map((member) => serializeDtoType(member)).sort().join('|')})`;
+  }
+
+  return type.kind;
+}
+
+function simplifyUnionMembers(members: DtoInferredType[]): DtoInferredType[] {
+  if (members.some((member) => member.kind === 'unknown')) {
+    return [{ kind: 'unknown' }];
+  }
+
+  const filtered = members.filter((member) => !(member.kind === 'integer' && members.some((item) => item.kind === 'number')));
+  const map = new Map<string, DtoInferredType>();
+  filtered.forEach((member) => {
+    map.set(serializeDtoType(member), member);
+  });
+
+  return [...map.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, member]) => member);
+}
+
+function createUnionType(rawMembers: DtoInferredType[]): DtoInferredType {
+  const flattenedMembers = rawMembers.flatMap((member) => (member.kind === 'union' ? member.members : [member]));
+  const members = simplifyUnionMembers(flattenedMembers);
+
+  if (members.length === 1) {
+    return members[0];
+  }
+
+  return {
+    kind: 'union',
+    members,
+  };
+}
+
+function mergeDtoObjectProperties(
+  left: Record<string, { type: DtoInferredType; optional: boolean }>,
+  right: Record<string, { type: DtoInferredType; optional: boolean }>,
+): Record<string, { type: DtoInferredType; optional: boolean }> {
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  const merged: Record<string, { type: DtoInferredType; optional: boolean }> = {};
+
+  keys.forEach((key) => {
+    const leftProperty = left[key];
+    const rightProperty = right[key];
+
+    if (leftProperty && rightProperty) {
+      merged[key] = {
+        type: mergeDtoTypes(leftProperty.type, rightProperty.type),
+        optional: leftProperty.optional || rightProperty.optional,
+      };
+      return;
+    }
+
+    if (leftProperty) {
+      merged[key] = {
+        type: leftProperty.type,
+        optional: true,
+      };
+      return;
+    }
+
+    if (rightProperty) {
+      merged[key] = {
+        type: rightProperty.type,
+        optional: true,
+      };
+    }
+  });
+
+  return merged;
+}
+
+function mergeDtoTypes(left: DtoInferredType, right: DtoInferredType): DtoInferredType {
+  if (left.kind === 'unknown' || right.kind === 'unknown') {
+    return { kind: 'unknown' };
+  }
+
+  if (left.kind === right.kind) {
+    if (left.kind === 'object' && right.kind === 'object') {
+      return {
+        kind: 'object',
+        properties: mergeDtoObjectProperties(left.properties, right.properties),
+      };
+    }
+
+    if (left.kind === 'array' && right.kind === 'array') {
+      return {
+        kind: 'array',
+        element: mergeDtoTypes(left.element, right.element),
+      };
+    }
+
+    if (left.kind === 'union' && right.kind === 'union') {
+      return createUnionType([...left.members, ...right.members]);
+    }
+
+    return left;
+  }
+
+  if ((left.kind === 'integer' && right.kind === 'number') || (left.kind === 'number' && right.kind === 'integer')) {
+    return { kind: 'number' };
+  }
+
+  if (left.kind === 'union') {
+    return createUnionType([...left.members, right]);
+  }
+
+  if (right.kind === 'union') {
+    return createUnionType([left, ...right.members]);
+  }
+
+  return createUnionType([left, right]);
+}
+
+function isValidTsIdentifier(value: string): boolean {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value) && !TS_RESERVED_WORDS.has(value);
+}
+
+function toTsPropertyName(key: string): string {
+  return isValidTsIdentifier(key) ? key : JSON.stringify(key);
+}
+
+function shouldWrapTsArrayElement(typeExpression: string): boolean {
+  return typeExpression.includes(' | ');
+}
+
+type TsDtoContext = {
+  interfaceNameBySignature: Map<string, string>;
+  interfaceCodeByName: Map<string, string>;
+  usedInterfaceNames: Set<string>;
+};
+
+function resolveTsDtoType(type: DtoInferredType, nameHint: string, context: TsDtoContext): string {
+  if (type.kind === 'object') {
+    const signature = serializeDtoType(type);
+    const existingName = context.interfaceNameBySignature.get(signature);
+    if (existingName) {
+      return existingName;
+    }
+
+    const interfaceName = createUniqueName(toPascalCase(nameHint, 'Type'), context.usedInterfaceNames);
+    context.interfaceNameBySignature.set(signature, interfaceName);
+
+    const propertyLines = Object.keys(type.properties)
+      .sort()
+      .map((key) => {
+        const property = type.properties[key];
+        const propertyType = resolveTsDtoType(property.type, `${interfaceName}${toPascalCase(key, 'Item')}`, context);
+        const optionalSuffix = property.optional ? '?' : '';
+        return `  ${toTsPropertyName(key)}${optionalSuffix}: ${propertyType};`;
+      });
+
+    const interfaceBody = propertyLines.length > 0 ? propertyLines.join('\n') : '  [key: string]: unknown;';
+    context.interfaceCodeByName.set(
+      interfaceName,
+      `export interface ${interfaceName} {\n${interfaceBody}\n}`,
+    );
+    return interfaceName;
+  }
+
+  if (type.kind === 'array') {
+    const elementType = resolveTsDtoType(type.element, `${nameHint}Item`, context);
+    return shouldWrapTsArrayElement(elementType) ? `(${elementType})[]` : `${elementType}[]`;
+  }
+
+  if (type.kind === 'union') {
+    const unionTypes = [...new Set(type.members.map((member) => resolveTsDtoType(member, nameHint, context)))];
+    return unionTypes.join(' | ');
+  }
+
+  if (type.kind === 'string') return 'string';
+  if (type.kind === 'boolean') return 'boolean';
+  if (type.kind === 'integer' || type.kind === 'number') return 'number';
+  if (type.kind === 'null') return 'null';
+  return 'unknown';
+}
+
+export function convertJsonToTypeScriptDto(value: unknown, rootName = 'RootDto'): string {
+  const inferredType = inferDtoType(value);
+  const normalizedRootName = toPascalCase(rootName, 'RootDto');
+  const context: TsDtoContext = {
+    interfaceNameBySignature: new Map(),
+    interfaceCodeByName: new Map(),
+    usedInterfaceNames: new Set(),
+  };
+
+  const rootTypeExpression = resolveTsDtoType(inferredType, normalizedRootName, context);
+  const rootInterfaceCode = context.interfaceCodeByName.get(normalizedRootName);
+  const nestedInterfaceCodes = [...context.interfaceCodeByName.entries()]
+    .filter(([name]) => name !== normalizedRootName)
+    .map(([, code]) => code);
+
+  if (rootInterfaceCode) {
+    return [rootInterfaceCode, ...nestedInterfaceCodes].join('\n\n');
+  }
+
+  const rootAlias = `export type ${normalizedRootName} = ${rootTypeExpression};`;
+  if (nestedInterfaceCodes.length === 0) {
+    return rootAlias;
+  }
+
+  return [rootAlias, ...nestedInterfaceCodes].join('\n\n');
+}
+
+function toJavaFieldName(key: string): string {
+  const baseName = toCamelCase(key, 'value').replace(/[^A-Za-z0-9_]/g, '_');
+  const normalized = /^[A-Za-z_]/.test(baseName) ? baseName : `_${baseName}`;
+  return JAVA_RESERVED_WORDS.has(normalized) ? `${normalized}Value` : normalized;
+}
+
+function escapeJavaCommentText(value: string): string {
+  return value.replace(/\*\//g, '*\\/');
+}
+
+type JavaDtoContext = {
+  classNameBySignature: Map<string, string>;
+  nestedClassCodeByName: Map<string, string>;
+  usedClassNames: Set<string>;
+  requiresListImport: boolean;
+};
+
+function resolveJavaDtoType(type: DtoInferredType, nameHint: string, context: JavaDtoContext): string {
+  if (type.kind === 'object') {
+    const signature = serializeDtoType(type);
+    const existingName = context.classNameBySignature.get(signature);
+    if (existingName) {
+      return existingName;
+    }
+
+    const className = createUniqueName(toPascalCase(nameHint, 'Type'), context.usedClassNames);
+    context.classNameBySignature.set(signature, className);
+
+    const fieldLines: string[] = [];
+    Object.keys(type.properties)
+      .sort()
+      .forEach((key) => {
+        const property = type.properties[key];
+        const fieldType = resolveJavaDtoType(property.type, `${className}${toPascalCase(key, 'Item')}`, context);
+        const fieldName = toJavaFieldName(key);
+
+        if (fieldName !== key) {
+          fieldLines.push(`    // JSON key: ${escapeJavaCommentText(key)}`);
+        }
+        fieldLines.push(`    public ${fieldType} ${fieldName};`);
+      });
+
+    const body = fieldLines.length > 0 ? fieldLines.join('\n') : '    // empty object';
+    context.nestedClassCodeByName.set(className, `  public static class ${className} {\n${body}\n  }`);
+    return className;
+  }
+
+  if (type.kind === 'array') {
+    context.requiresListImport = true;
+    const elementType = resolveJavaDtoType(type.element, `${nameHint}Item`, context);
+    return `List<${elementType}>`;
+  }
+
+  if (type.kind === 'union') {
+    const nonNullMembers = type.members.filter((member) => member.kind !== 'null');
+    if (nonNullMembers.length === 1 && type.members.length === 2) {
+      return resolveJavaDtoType(nonNullMembers[0], nameHint, context);
+    }
+    return 'Object';
+  }
+
+  if (type.kind === 'string') return 'String';
+  if (type.kind === 'boolean') return 'Boolean';
+  if (type.kind === 'integer') return 'Integer';
+  if (type.kind === 'number') return 'Double';
+  return 'Object';
+}
+
+function buildJavaRootClassBody(
+  rootType: DtoInferredType,
+  rootClassName: string,
+  context: JavaDtoContext,
+): string {
+  if (rootType.kind !== 'object') {
+    const rootValueType = resolveJavaDtoType(rootType, `${rootClassName}Value`, context);
+    return `  public ${rootValueType} value;`;
+  }
+
+  const rootSignature = serializeDtoType(rootType);
+  context.classNameBySignature.set(rootSignature, rootClassName);
+
+  const fieldLines: string[] = [];
+  Object.keys(rootType.properties)
+    .sort()
+    .forEach((key) => {
+      const property = rootType.properties[key];
+      const fieldType = resolveJavaDtoType(property.type, `${rootClassName}${toPascalCase(key, 'Item')}`, context);
+      const fieldName = toJavaFieldName(key);
+
+      if (fieldName !== key) {
+        fieldLines.push(`  // JSON key: ${escapeJavaCommentText(key)}`);
+      }
+      fieldLines.push(`  public ${fieldType} ${fieldName};`);
+    });
+
+  return fieldLines.length > 0 ? fieldLines.join('\n') : '  // empty object';
+}
+
+export function convertJsonToJavaDto(value: unknown, rootClassName = 'RootDto'): string {
+  const inferredType = inferDtoType(value);
+  const normalizedRootClassName = toPascalCase(rootClassName, 'RootDto');
+  const context: JavaDtoContext = {
+    classNameBySignature: new Map(),
+    nestedClassCodeByName: new Map(),
+    usedClassNames: new Set([normalizedRootClassName]),
+    requiresListImport: false,
+  };
+
+  const rootBody = buildJavaRootClassBody(inferredType, normalizedRootClassName, context);
+  const nestedClassCodes = [...context.nestedClassCodeByName.entries()]
+    .filter(([name]) => name !== normalizedRootClassName)
+    .map(([, code]) => code);
+  const importBlock = context.requiresListImport ? 'import java.util.List;\n\n' : '';
+  const nestedBlock = nestedClassCodes.length > 0 ? `\n\n${nestedClassCodes.join('\n\n')}` : '';
+
+  return `${importBlock}public class ${normalizedRootClassName} {\n${rootBody}${nestedBlock}\n}`;
+}
+
 export function escapeOrUnescapeJsonString(input: string): {
   output: string;
   outputLanguage: 'json' | 'plaintext';

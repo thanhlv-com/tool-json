@@ -14,10 +14,12 @@ import type {
   ThemeMode,
 } from './types';
 import {
+  convertJsonToJavaDto,
   applyJsonPatchOperations,
   convertCsvToJson,
   convertJsonToProperties,
   convertJsonToCsv,
+  convertJsonToTypeScriptDto,
   convertJsonToXml,
   escapeOrUnescapeJsonString,
   generateJsonDiffReport,
@@ -360,7 +362,7 @@ function isLikelyJsonInput(value: string): boolean {
 }
 
 function isConvertTargetFormat(value: unknown): value is ConvertTargetFormat {
-  return value === 'yaml' || value === 'xml' || value === 'properties';
+  return value === 'yaml' || value === 'xml' || value === 'properties' || value === 'typescriptDto' || value === 'javaDto';
 }
 
 function isSchemaDraft(value: unknown): value is SchemaDraft {
@@ -504,7 +506,7 @@ function loadPersistedState(): PersistedState {
     const lastMode = parsed.lastMode && ALL_MODES.includes(parsed.lastMode) ? parsed.lastMode : 'format';
     const convertTargetFormat =
       parsed.convertTargetFormat &&
-      ['yaml', 'xml', 'properties'].includes(parsed.convertTargetFormat)
+      ['yaml', 'xml', 'properties', 'typescriptDto', 'javaDto'].includes(parsed.convertTargetFormat)
         ? (parsed.convertTargetFormat as ConvertTargetFormat)
         : defaults.convertTargetFormat;
     const historyEnabled =
@@ -1183,11 +1185,13 @@ export function useJsonToolState(mode: Mode) {
           setConvertSourceFormat('json');
           const sourceLabel = 'JSON';
           let targetLabel = '';
+          let minifyApplied = false;
 
           if (convertTargetFormat === 'yaml') {
             targetLabel = 'YAML';
             setOutputLanguage('yaml');
             if (action === 'minify') {
+              minifyApplied = true;
               setOutput(
                 YAML.stringify(parsed, {
                   collectionStyle: 'flow',
@@ -1203,12 +1207,21 @@ export function useJsonToolState(mode: Mode) {
           } else if (convertTargetFormat === 'xml') {
             targetLabel = 'XML';
             setOutputLanguage('xml');
+            minifyApplied = action === 'minify';
             setOutput(
               convertJsonToXml(parsed, {
                 pretty: action !== 'minify',
                 rootName: 'root',
               }),
             );
+          } else if (convertTargetFormat === 'typescriptDto') {
+            targetLabel = 'TypeScript DTO';
+            setOutputLanguage('plaintext');
+            setOutput(convertJsonToTypeScriptDto(parsed, 'RootDto'));
+          } else if (convertTargetFormat === 'javaDto') {
+            targetLabel = 'Java DTO';
+            setOutputLanguage('plaintext');
+            setOutput(convertJsonToJavaDto(parsed, 'RootDto'));
           } else {
             targetLabel = 'Properties';
             setOutputLanguage('plaintext');
@@ -1217,7 +1230,7 @@ export function useJsonToolState(mode: Mode) {
 
           if (action === 'validate') {
             setErrorStatus({ message: `Valid ${sourceLabel} (Converted to ${targetLabel})`, isError: false });
-          } else if (action === 'minify') {
+          } else if (action === 'minify' && minifyApplied) {
             setErrorStatus({ message: `Converted ${sourceLabel} to ${targetLabel} (Minified)`, isError: false });
           } else {
             setErrorStatus({ message: `Converted ${sourceLabel} to ${targetLabel}`, isError: false });

@@ -63,10 +63,10 @@ const MODE_GUIDES: Record<Mode, ModeGuide> = {
   },
   convert: {
     title: 'Convert Guide',
-    purpose: 'Convert valid JSON into YAML, XML, or Properties format.',
+    purpose: 'Convert valid JSON into YAML, XML, Properties, TypeScript DTO, or Java DTO.',
     steps: [
       'Paste valid JSON input.',
-      'Choose the target format in Target selector.',
+      'Choose the target format in Target selector (including DTO targets).',
       'Click Convert and export the result with Copy or Down.',
     ],
   },

@@ -25,7 +25,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 | `merge` | `/merge` | Merge hai JSON structure thành một JSON duy nhất |
 | `query` | `/query` | JSONPath query |
 | `tree` | `/tree` | Tree explorer + path inspector cho JSON |
-| `convert` | `/convert` | Convert JSON -> YAML/XML/Properties |
+| `convert` | `/convert` | Convert JSON -> YAML/XML/Properties/TypeScript DTO/Java DTO |
 | `schemaGenerate` | `/schema-generate` | Sinh JSON Schema từ sample JSON |
 | `schemaMock` | `/schema-mock` | Sinh mock data từ JSON Schema |
 | `schemaValidate` | `/schema-validate` | Validate JSON data theo schema |
@@ -92,6 +92,8 @@ Legacy path:
 - `YAML`
 - `XML`
 - `Properties`
+- `TypeScript DTO`
+- `Java DTO`
 - Không còn target `JSON`.
 - `Minify` có tác dụng khi target là YAML/XML (compact output).
 - `Open` chỉ chấp nhận file `.json` ở mode này.
@@ -178,6 +180,8 @@ Legacy path:
 - `result.yaml` cho YAML output.
 - `result.xml` cho XML output.
 - `result.properties` cho Properties output.
+- `RootDto.ts` cho TypeScript DTO output.
+- `RootDto.java` cho Java DTO output.
 - `mock-data.json` cho schema mock mode.
 - `result.csv` hoặc `result.tsv` cho CSV output.
 - `result.txt` cho plaintext output ở escape mode.

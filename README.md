@@ -1,6 +1,6 @@
 # JSON Dev Tool
 
-Ứng dụng Vite + React + TypeScript để xử lý dữ liệu ngay trên trình duyệt: JSON format/validate, diff chi tiết, JSONPath query, JSON Tree Explorer + Path Inspector, JSON -> YAML/XML/Properties, JSON <-> CSV, escape/unescape, và JSON Patch (RFC 6902).
+Ứng dụng Vite + React + TypeScript để xử lý dữ liệu ngay trên trình duyệt: JSON format/validate, diff chi tiết, JSONPath query, JSON Tree Explorer + Path Inspector, JSON -> YAML/XML/Properties/TypeScript DTO/Java DTO, JSON <-> CSV, escape/unescape, và JSON Patch (RFC 6902).
 
 ## Chạy local
 
@@ -28,7 +28,7 @@ npm run preview
 - `/merge`: merge hai cấu trúc JSON (`LEFT_JSON` + `RIGHT_JSON`) thành `MERGED_RESULT`.
 - `/query`: chạy JSONPath query trên input JSON.
 - `/tree`: khám phá cây JSON (expand/collapse) và inspect path/node theo JSON Pointer hoặc JSONPath.
-- `/convert`: convert từ JSON sang `YAML`, `XML`, hoặc `Properties` (input bắt buộc là JSON hợp lệ).
+- `/convert`: convert từ JSON sang `YAML`, `XML`, `Properties`, `TypeScript DTO`, hoặc `Java DTO` (input bắt buộc là JSON hợp lệ).
 - `/schema-generate`: tạo JSON Schema từ sample JSON.
 - `/schema-mock`: sinh mock data từ JSON Schema (hỗ trợ `type`, `enum`, `const`, `format`, `oneOf/anyOf/allOf`, `$ref` local, `min/max`).
 - `/schema-validate`: validate JSON data theo JSON Schema (chọn draft + custom keywords).
@@ -46,7 +46,7 @@ Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, s
 - Persist state vào `localStorage` (`json-dev-tool.state.v2`): reload vẫn giữ input/output/options/theme, `Type Hints`, và mode cuối.
 - Hỗ trợ import input từ file qua nút `Open` theo từng mode.
 - Hỗ trợ share link theo mode hiện tại qua nút `Share` trên tất cả action bar (link chứa state mode hiện tại trong query `?share=...`, mở link sẽ tự điều hướng về mode trong payload rồi load dữ liệu tương ứng).
-- Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
+- Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.ts`, `.java`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
 - Offline-first PWA: build tạo service worker + web manifest, cache local các asset chính để app vẫn mở và thao tác được trong điều kiện mạng chập chờn/mất mạng.
 - Responsive layout cho mobile/tablet/desktop: mobile dùng mode dropdown, từ `sm` trở lên dùng tab navigation cuộn ngang; workspace tự đổi số cột theo kích thước màn hình và action bar tự wrap controls.
 

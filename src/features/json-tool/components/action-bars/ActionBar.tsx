@@ -128,7 +128,11 @@ export function ActionBar({
         ? 'result.yaml'
         : convertTargetFormat === 'xml'
           ? 'result.xml'
-          : 'result.properties'
+          : convertTargetFormat === 'properties'
+            ? 'result.properties'
+            : convertTargetFormat === 'typescriptDto'
+              ? 'RootDto.ts'
+              : 'RootDto.java'
       : mode === 'convertCsv' && outputLanguage === 'plaintext'
         ? csvOptions.delimiter === '\t'
           ? 'result.tsv'
@@ -220,6 +224,8 @@ export function ActionBar({
               <option value="yaml">YAML</option>
               <option value="xml">XML</option>
               <option value="properties">Properties</option>
+              <option value="typescriptDto">TypeScript DTO</option>
+              <option value="javaDto">Java DTO</option>
             </select>
             {convertSourceFormat && <span className="text-[#6F7780]">from {convertSourceFormat.toUpperCase()}</span>}
           </div>
