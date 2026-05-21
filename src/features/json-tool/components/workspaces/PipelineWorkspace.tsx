@@ -1,4 +1,5 @@
 import Editor from '@monaco-editor/react';
+import { HelpPopupButton } from './HelpPopupButton';
 import type { OutputLanguage, ThemeMode } from '../../types';
 
 type PipelineWorkspaceProps = {
@@ -87,13 +88,19 @@ export function PipelineWorkspace({
           />
         </div>
         <div className="border-t border-[#262626] bg-[#121214] px-3 py-2 text-[10px] font-mono text-[#8D95A3] space-y-1">
-          <div className="uppercase tracking-wide text-[#A2AAB8]">Supported step types</div>
-          <div>`query`: {`{ "type": "query", "path": "$.items[*]" }`}</div>
-          <div>`set`: {`{ "type": "set", "path": "/meta/version", "value": "2.0.0" }`}</div>
-          <div>`remove`: {`{ "type": "remove", "path": "/secret" }`}</div>
-          <div>`pick`: {`{ "type": "pick", "paths": ["/id", "/profile/name"] }`}</div>
-          <div>`mask`: {`{ "type": "mask", "rules": { "keys": ["token"] } }`}</div>
-          <div>`convert`: {`{ "type": "convert", "target": "json|yaml|xml|properties" }`}</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="uppercase tracking-wide text-[#A2AAB8]">Need help with steps?</div>
+            <HelpPopupButton title="Supported step types" buttonLabel="View Guide">
+              <div className="space-y-1">
+                <div>`query`: {`{ "type": "query", "path": "$.items[*]" }`}</div>
+                <div>`set`: {`{ "type": "set", "path": "/meta/version", "value": "2.0.0" }`}</div>
+                <div>`remove`: {`{ "type": "remove", "path": "/secret" }`}</div>
+                <div>`pick`: {`{ "type": "pick", "paths": ["/id", "/profile/name"] }`}</div>
+                <div>`mask`: {`{ "type": "mask", "rules": { "keys": ["token"] } }`}</div>
+                <div>`convert`: {`{ "type": "convert", "target": "json|yaml|xml|properties" }`}</div>
+              </div>
+            </HelpPopupButton>
+          </div>
         </div>
       </section>
 

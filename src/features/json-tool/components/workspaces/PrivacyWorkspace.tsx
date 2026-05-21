@@ -1,4 +1,5 @@
 import Editor from '@monaco-editor/react';
+import { HelpPopupButton } from './HelpPopupButton';
 import type { OutputLanguage, ThemeMode } from '../../types';
 
 type PrivacyWorkspaceProps = {
@@ -87,13 +88,19 @@ export function PrivacyWorkspace({
           />
         </div>
         <div className="border-t border-[#262626] bg-[#121214] px-3 py-2 text-[10px] font-mono text-[#8D95A3] space-y-1">
-          <div className="uppercase tracking-wide text-[#A2AAB8]">Supported rule types</div>
-          <div>`key`: {`{ "keys": ["password", "token"] }`}</div>
-          <div>`jsonPath`: {`{ "jsonPathPatterns": ["$.users[*].email", "$..secret"] }`}</div>
-          <div className="pt-1 uppercase tracking-wide text-[#A2AAB8]">Supported properties</div>
-          <div>`maskText`: {`{ "maskText": "***REDACTED***" }`}</div>
-          <div>`keepStartVisible`: {`{ "keepStartVisible": 2 }`} (integer, &gt;= 0)</div>
-          <div>`keepEndVisible`: {`{ "keepEndVisible": 4 }`} (integer, &gt;= 0)</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="uppercase tracking-wide text-[#A2AAB8]">Need help with rules?</div>
+            <HelpPopupButton title="Supported rule types" buttonLabel="View Guide">
+              <div className="space-y-1">
+                <div>`key`: {`{ "keys": ["password", "token"] }`}</div>
+                <div>`jsonPath`: {`{ "jsonPathPatterns": ["$.users[*].email", "$..secret"] }`}</div>
+                <div className="pt-1 uppercase tracking-wide text-[#A2AAB8]">Supported properties</div>
+                <div>`maskText`: {`{ "maskText": "***REDACTED***" }`}</div>
+                <div>`keepStartVisible`: {`{ "keepStartVisible": 2 }`} (integer, &gt;= 0)</div>
+                <div>`keepEndVisible`: {`{ "keepEndVisible": 4 }`} (integer, &gt;= 0)</div>
+              </div>
+            </HelpPopupButton>
+          </div>
         </div>
       </section>
 
