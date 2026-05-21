@@ -13,6 +13,7 @@ import {
   TreeExplorerWorkspace,
 } from './components/workspaces';
 import { MODE_PATHS, getModeFromPathname, isValidModePath } from './modeRoutes';
+import { applySeoForMode } from './seo';
 import { getPersistedLastMode, getSharedModeFromSearch, useJsonToolState } from './useJsonToolState';
 
 export function JsonToolPage() {
@@ -172,6 +173,10 @@ export function JsonToolPage() {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  useEffect(() => {
+    applySeoForMode(mode);
+  }, [mode]);
 
   return (
     <div className="min-h-[100dvh] w-full bg-[#0F0F11] text-[#E0E0E0] font-sans">

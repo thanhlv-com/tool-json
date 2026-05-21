@@ -17,7 +17,8 @@ export default defineConfig(({mode}) => {
         manifest: {
           name: 'JSON Dev Tool',
           short_name: 'JSONTool',
-          description: 'Offline-first JSON utilities for format, diff, merge, query, convert, schema, CSV, and patch.',
+          description:
+            'Offline-first JSON utilities for format, diff, merge, query, pipeline, privacy, tree, convert, schema, CSV, and patch.',
           theme_color: '#0F0F11',
           background_color: '#0F0F11',
           display: 'standalone',

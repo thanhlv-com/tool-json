@@ -63,8 +63,10 @@ Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, s
 - `src/features/json-tool/components/workspaces/`: nhóm workspace editor theo mode.
 - `src/features/json-tool/components/navigation/`: top navigation.
 - `src/features/json-tool/modeRoutes.ts`: map mode <-> route.
+- `src/features/json-tool/seo.ts`: route-level SEO metadata + structured data updater.
 - `src/features/json-tool/useJsonToolState.ts`: state trung tâm + xử lý mode + localStorage persistence.
 - `src/features/json-tool/utils.ts`: helper cho schema/csv/escape/patch.
+- `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`: static SEO/AI crawler hints.
 
 ## Tài liệu chi tiết
 

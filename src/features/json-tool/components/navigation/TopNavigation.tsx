@@ -15,7 +15,10 @@ import {
   SplitSquareHorizontal,
   Sun,
   Wand2,
+  type LucideIcon,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { MODE_PATHS } from '../../modeRoutes';
 import type { Mode, ThemeMode } from '../../types';
 
 type TopNavigationProps = {
@@ -31,6 +34,29 @@ type TopNavigationProps = {
   onToggleTheme: () => void;
 };
 
+type ModeOption = {
+  value: Mode;
+  label: string;
+  icon: LucideIcon;
+};
+
+const MODE_OPTIONS: ModeOption[] = [
+  { value: 'format', label: 'Editor', icon: AlignLeft },
+  { value: 'diff', label: 'JSON Diff', icon: SplitSquareHorizontal },
+  { value: 'merge', label: 'Merge', icon: GitMerge },
+  { value: 'query', label: 'Path Query', icon: SearchCode },
+  { value: 'pipeline', label: 'Pipeline', icon: Wand2 },
+  { value: 'privacy', label: 'Privacy', icon: Lock },
+  { value: 'tree', label: 'Tree', icon: GitBranch },
+  { value: 'convert', label: 'Convert', icon: FileCode2 },
+  { value: 'schemaGenerate', label: 'Schema', icon: Sparkles },
+  { value: 'schemaMock', label: 'Mock', icon: TestTube2 },
+  { value: 'schemaValidate', label: 'Check', icon: ShieldCheck },
+  { value: 'convertCsv', label: 'CSV', icon: Table2 },
+  { value: 'escape', label: 'Escape', icon: Link2 },
+  { value: 'patch', label: 'Patch', icon: Wand2 },
+];
+
 export function TopNavigation({
   mode,
   onNavigateMode,
@@ -43,23 +69,6 @@ export function TopNavigation({
   theme,
   onToggleTheme,
 }: TopNavigationProps) {
-  const modeOptions: Array<{ value: Mode; label: string }> = [
-    { value: 'format', label: 'Editor' },
-    { value: 'diff', label: 'JSON Diff' },
-    { value: 'merge', label: 'Merge' },
-    { value: 'query', label: 'Path Query' },
-    { value: 'pipeline', label: 'Pipeline' },
-    { value: 'privacy', label: 'Privacy' },
-    { value: 'tree', label: 'Tree' },
-    { value: 'convert', label: 'Convert' },
-    { value: 'schemaGenerate', label: 'Schema' },
-    { value: 'schemaMock', label: 'Mock' },
-    { value: 'schemaValidate', label: 'Check' },
-    { value: 'convertCsv', label: 'CSV' },
-    { value: 'escape', label: 'Escape' },
-    { value: 'patch', label: 'Patch' },
-  ];
-
   return (
     <header className="border-b border-[#262626] bg-[#161618] shrink-0">
       <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6">
@@ -118,7 +127,7 @@ export function TopNavigation({
             onChange={(event) => onNavigateMode(event.target.value as Mode)}
             className="mt-1 w-full bg-[#121214] border border-[#333] rounded px-3 py-2 text-xs text-[#E0E0E0] outline-none focus:border-blue-500"
           >
-            {modeOptions.map((modeOption) => (
+            {MODE_OPTIONS.map((modeOption) => (
               <option key={modeOption.value} value={modeOption.value}>
                 {modeOption.label}
               </option>
@@ -127,118 +136,22 @@ export function TopNavigation({
         </div>
 
         <nav className="hidden sm:flex gap-1 text-xs font-medium overflow-x-auto whitespace-nowrap pr-2">
-          <button
-            onClick={() => onNavigateMode('format')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'format' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <AlignLeft className="w-3.5 h-3.5" /> Editor
-          </button>
-          <button
-            onClick={() => onNavigateMode('diff')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'diff' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <SplitSquareHorizontal className="w-3.5 h-3.5" /> JSON Diff
-          </button>
-          <button
-            onClick={() => onNavigateMode('merge')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'merge' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <GitMerge className="w-3.5 h-3.5" /> Merge
-          </button>
-          <button
-            onClick={() => onNavigateMode('query')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'query' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <SearchCode className="w-3.5 h-3.5" /> Path Query
-          </button>
-          <button
-            onClick={() => onNavigateMode('pipeline')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'pipeline' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <Wand2 className="w-3.5 h-3.5" /> Pipeline
-          </button>
-          <button
-            onClick={() => onNavigateMode('privacy')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'privacy' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <Lock className="w-3.5 h-3.5" /> Privacy
-          </button>
-          <button
-            onClick={() => onNavigateMode('tree')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'tree' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <GitBranch className="w-3.5 h-3.5" /> Tree
-          </button>
-          <button
-            onClick={() => onNavigateMode('convert')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'convert' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <FileCode2 className="w-3.5 h-3.5" /> Convert
-          </button>
-          <button
-            onClick={() => onNavigateMode('schemaGenerate')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'schemaGenerate' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" /> Schema
-          </button>
-          <button
-            onClick={() => onNavigateMode('schemaMock')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'schemaMock' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <TestTube2 className="w-3.5 h-3.5" /> Mock
-          </button>
-          <button
-            onClick={() => onNavigateMode('schemaValidate')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'schemaValidate' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5" /> Check
-          </button>
-          <button
-            onClick={() => onNavigateMode('convertCsv')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'convertCsv' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <Table2 className="w-3.5 h-3.5" /> CSV
-          </button>
-          <button
-            onClick={() => onNavigateMode('escape')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'escape' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <Link2 className="w-3.5 h-3.5" /> Escape
-          </button>
-          <button
-            onClick={() => onNavigateMode('patch')}
-            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
-              mode === 'patch' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
-            }`}
-          >
-            <Wand2 className="w-3.5 h-3.5" /> Patch
-          </button>
+          {MODE_OPTIONS.map((modeOption) => {
+            const Icon = modeOption.icon;
+            const isActive = mode === modeOption.value;
+
+            return (
+              <Link
+                key={modeOption.value}
+                to={MODE_PATHS[modeOption.value]}
+                className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+                  isActive ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" /> {modeOption.label}
+              </Link>
+            );
+          })}
         </nav>
       </div>
     </header>
