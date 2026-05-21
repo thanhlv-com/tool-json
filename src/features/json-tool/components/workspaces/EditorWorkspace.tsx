@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import YAML from 'yaml';
 import type { Mode, OutputLanguage, ThemeMode } from '../../types';
 
-type StructuredLanguage = 'json' | 'yaml' | 'xml' | 'plaintext';
+type StructuredLanguage = 'json' | 'yaml' | 'xml' | 'plaintext' | 'typescript' | 'java';
 
 type MonacoEditor = any;
 
@@ -102,7 +102,7 @@ function inferArrayElementType(items: any[]): string {
 }
 
 function collectValueHints(content: string, language: StructuredLanguage): ValueHint[] {
-  if (language === 'plaintext' || language === 'xml' || !content.trim()) {
+  if (language === 'plaintext' || language === 'xml' || language === 'typescript' || language === 'java' || !content.trim()) {
     return [];
   }
 

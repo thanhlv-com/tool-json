@@ -1216,11 +1216,11 @@ export function useJsonToolState(mode: Mode) {
             );
           } else if (convertTargetFormat === 'typescriptDto') {
             targetLabel = 'TypeScript DTO';
-            setOutputLanguage('plaintext');
+            setOutputLanguage('typescript');
             setOutput(convertJsonToTypeScriptDto(parsed, 'RootDto'));
           } else if (convertTargetFormat === 'javaDto') {
             targetLabel = 'Java DTO';
-            setOutputLanguage('plaintext');
+            setOutputLanguage('java');
             setOutput(convertJsonToJavaDto(parsed, 'RootDto'));
           } else {
             targetLabel = 'Properties';

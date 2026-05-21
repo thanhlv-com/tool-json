@@ -16,7 +16,7 @@ export type Mode =
 
 export type ThemeMode = 'vs-dark' | 'light';
 
-export type OutputLanguage = 'json' | 'yaml' | 'xml' | 'plaintext';
+export type OutputLanguage = 'json' | 'yaml' | 'xml' | 'plaintext' | 'typescript' | 'java';
 
 export type ConvertSourceFormat = 'json' | 'yaml' | null;
 export type ConvertTargetFormat = 'yaml' | 'xml' | 'properties' | 'typescriptDto' | 'javaDto';
