@@ -1,6 +1,6 @@
 # JSON Dev Tool
 
-Ứng dụng Vite + React + TypeScript để xử lý dữ liệu ngay trên trình duyệt: JSON format/validate, diff chi tiết, JSONPath query, JSON Tree Explorer + Path Inspector, JSON -> YAML/XML/Properties/TypeScript DTO/Java DTO, JSON <-> CSV, escape/unescape, và JSON Patch (RFC 6902).
+Ứng dụng Vite + React + TypeScript để xử lý dữ liệu ngay trên trình duyệt: JSON format/validate, diff chi tiết, merge, JSONPath query, Pipeline transform, Privacy masking, Tree Explorer + Path Inspector, JSON -> YAML/XML/Properties/TypeScript DTO/Java DTO, JSON <-> CSV, escape/unescape, và JSON Patch (RFC 6902).
 
 ## Chạy local
 
@@ -27,6 +27,8 @@ npm run preview
 - `/diff`: so sánh hai JSON bằng Monaco DiffEditor, có `Format` cho cả 2 pane và panel diff chi tiết theo path.
 - `/merge`: merge hai cấu trúc JSON (`LEFT_JSON` + `RIGHT_JSON`) thành `MERGED_RESULT`.
 - `/query`: chạy JSONPath query trên input JSON.
+- `/pipeline`: chạy chuỗi transform steps (`query`, `set`, `remove`, `pick`, `mask`, `convert`) trên JSON.
+- `/privacy`: mask dữ liệu nhạy cảm theo `keys` và/hoặc `jsonPathPatterns`.
 - `/tree`: khám phá cây JSON (expand/collapse) và inspect path/node theo JSON Pointer hoặc JSONPath.
 - `/convert`: convert từ JSON sang `YAML`, `XML`, `Properties`, `TypeScript DTO`, hoặc `Java DTO` (input bắt buộc là JSON hợp lệ).
 - `/schema-generate`: tạo JSON Schema từ sample JSON.
@@ -41,11 +43,14 @@ Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, s
 ## Khả năng hiện có nổi bật
 
 - Type hints hiển thị trực tiếp bên trong editor (Monaco content widget) cho cả object/array/scalar, kèm path và thông tin số lượng (`items`, `keys`), có toggle `Type Hints`.
+- Workspace History có thể bật/tắt theo mode, hỗ trợ `Undo`/`Redo`/`Save Snapshot` và restore snapshot theo dropdown.
 - Diff report có summary (`+/-/~`) và danh sách detail theo từng operation/path để phân tích nhanh case thiếu item hoặc đổi kiểu dữ liệu.
 - Merge report có summary số thay đổi (`ops`, `+keys`, `overwrite`, `+array`, `type-conflict`) để theo dõi kết quả hợp nhất.
 - Persist state vào `localStorage` (`json-dev-tool.state.v2`): reload vẫn giữ input/output/options/theme, `Type Hints`, và mode cuối.
+- `Sync Input` đồng bộ input giữa các mode editor (trừ `schema-mock` để giữ schema mẫu riêng).
 - Hỗ trợ import input từ file qua nút `Open` theo từng mode.
 - Hỗ trợ share link theo mode hiện tại qua nút `Share` trên tất cả action bar (link chứa state mode hiện tại trong query `?share=...`, mở link sẽ tự điều hướng về mode trong payload rồi load dữ liệu tương ứng).
+- Shortcut chính: `Ctrl/Cmd + Enter` (run), `Ctrl/Cmd + Shift + F` (format), `Ctrl/Cmd + Shift + M` (minify).
 - Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.ts`, `.java`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
 - Offline-first PWA: build tạo service worker + web manifest, cache local các asset chính để app vẫn mở và thao tác được trong điều kiện mạng chập chờn/mất mạng.
 - Responsive layout cho mobile/tablet/desktop: mobile dùng mode dropdown, từ `sm` trở lên dùng tab navigation cuộn ngang; workspace tự đổi số cột theo kích thước màn hình và action bar tự wrap controls.

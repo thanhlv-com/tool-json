@@ -8,6 +8,7 @@ This project is a Vite + React + TypeScript JSON utility app.
 - `src/features/json-tool/` contains the main feature modules (`JsonToolPage`, `ActionBar`, mode workspaces, state hook, and mode routing).
 - `components/ui/` contains reusable UI primitives.
 - `lib/` contains shared helpers.
+- `docs/` stores code-first documentation (`FEATURES.md`, `ROADMAP.md`).
 - `public/` stores static assets.
 - `dist/` is build output (generated; do not edit manually).
 
@@ -32,7 +33,7 @@ No automated unit/integration test framework is configured yet. For every change
 
 1. Run `npm run lint`.
 2. Run `npm run build`.
-3. Manually verify impacted modes in the browser (`/editor`, `/diff`, `/merge`, `/query`, `/convert`, `/schema-generate`, `/schema-mock`, `/schema-validate`, `/csv`, `/escape`, `/patch`; optional legacy check: `/yaml` -> `/convert` redirect).
+3. Manually verify impacted modes in the browser (`/editor`, `/diff`, `/merge`, `/query`, `/pipeline`, `/privacy`, `/tree`, `/convert`, `/schema-generate`, `/schema-mock`, `/schema-validate`, `/csv`, `/escape`, `/patch`; optional legacy check: `/yaml` -> `/convert` redirect).
 
 If you add tests, place them near feature code (for example, `src/features/json-tool/__tests__/`).
 
