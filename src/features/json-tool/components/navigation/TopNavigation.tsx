@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Sparkles,
   Table2,
+  TestTube2,
   Moon,
   SearchCode,
   SplitSquareHorizontal,
@@ -52,6 +53,7 @@ export function TopNavigation({
     { value: 'tree', label: 'Tree' },
     { value: 'convert', label: 'Convert' },
     { value: 'schemaGenerate', label: 'Schema' },
+    { value: 'schemaMock', label: 'Mock' },
     { value: 'schemaValidate', label: 'Check' },
     { value: 'convertCsv', label: 'CSV' },
     { value: 'escape', label: 'Escape' },
@@ -196,6 +198,14 @@ export function TopNavigation({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" /> Schema
+          </button>
+          <button
+            onClick={() => onNavigateMode('schemaMock')}
+            className={`shrink-0 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+              mode === 'schemaMock' ? 'bg-[#262626] text-white' : 'hover:bg-[#202022] text-[#808080]'
+            }`}
+          >
+            <TestTube2 className="w-3.5 h-3.5" /> Mock
           </button>
           <button
             onClick={() => onNavigateMode('schemaValidate')}

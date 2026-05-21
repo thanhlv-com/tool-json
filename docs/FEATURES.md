@@ -27,6 +27,7 @@ Tài liệu này mô tả hành vi hiện tại theo code trong `src/features/js
 | `tree` | `/tree` | Tree explorer + path inspector cho JSON |
 | `convert` | `/convert` | Convert JSON -> YAML/XML/Properties |
 | `schemaGenerate` | `/schema-generate` | Sinh JSON Schema từ sample JSON |
+| `schemaMock` | `/schema-mock` | Sinh mock data từ JSON Schema |
 | `schemaValidate` | `/schema-validate` | Validate JSON data theo schema |
 | `convertCsv` | `/csv` | Chuyển JSON <-> CSV |
 | `escape` | `/escape` | Escape/unescape chuỗi JSON |
@@ -38,6 +39,7 @@ Legacy path:
 ## 3. State, persistence, và input
 
 - Có `Sync Input` cho nhóm mode thường (`format/query/tree/convert/schemaGenerate/schemaValidate/convertCsv/escape`).
+- Riêng `schemaMock` giữ input schema độc lập để luôn có ví dụ `JSON_SCHEMA` hợp lệ.
 - Khi `Sync Input = true`, các mode trên dùng chung `sharedInput`.
 - Khi `Sync Input = false`, mỗi mode dùng input riêng (`inputByMode`).
 - `diff` dùng cặp input độc lập: `diffOriginal` và `diffModified`.
@@ -102,7 +104,15 @@ Legacy path:
 - Object tự điền `required` theo toàn bộ key hiện có.
 - Schema root có `$schema: draft-07`.
 
-### 4.7 `/schema-validate`
+### 4.7 `/schema-mock`
+
+- Input là JSON Schema.
+- Action chính: `Generate Mock`.
+- Có tham số `Rows` (1-200) để sinh 1 object hoặc danh sách object.
+- Generator hiện hỗ trợ các keyword phổ biến: `type`, `enum`, `const`, `default`, `example/examples`, `oneOf`, `anyOf`, `allOf`, `$ref` local, `required`, `min/max` cho number/string/array/object.
+- Với schema có `format` string, sinh dữ liệu theo format phổ biến (`email`, `uri/url`, `date-time`, `date`, `uuid`, `ipv4`).
+
+### 4.8 `/schema-validate`
 
 - Input gồm 2 editor: `JSON_DATA` và `JSON_SCHEMA`.
 - Validate bằng AJV (`allErrors: true`, `strict: false`).
@@ -111,7 +121,7 @@ Legacy path:
 - Output gồm `valid`, `draft`, `customKeywords`, `errorCount`, `errors[]` (`{ path, message, keyword }`).
 - Có `ERROR_PANEL` hiển thị danh sách lỗi chi tiết theo path.
 
-### 4.8 `/csv`
+### 4.9 `/csv`
 
 - Tự nhận diện input:
 - Nếu text bắt đầu bằng `{` hoặc `[` thì convert JSON -> CSV.
@@ -125,20 +135,20 @@ Legacy path:
 - CSV -> JSON có parse kiểu cơ bản: number, boolean, null, JSON object/array trong cell.
 - Nếu có header nhưng không có body thì output `[]`.
 
-### 4.9 `/escape`
+### 4.10 `/escape`
 
 - Nếu input parse được JSON và là string -> unescape.
 - Nếu input parse được JSON nhưng không phải string -> escape thành JSON string.
 - Nếu input không parse được JSON -> escape raw text thành JSON string.
 
-### 4.10 `/patch`
+### 4.11 `/patch`
 
 - Dùng `fast-json-patch` để xử lý RFC 6902.
 - `Generate Patch`: so sánh `BASE_JSON` và `TARGET_JSON`, sinh operations.
 - `Apply Patch`: áp operations vào `BASE_JSON`, trả `PATCH_RESULT`.
 - `PATCH_OPERATIONS` có thể chỉnh tay trước khi apply.
 
-### 4.11 `/tree`
+### 4.12 `/tree`
 
 - Input là JSON text editor (Monaco).
 - Panel phải gồm:
@@ -158,7 +168,7 @@ Legacy path:
 
 ## 6. ActionBar, import/export, shortcut
 
-- Nút chính theo mode: `Validate`, `Generate`, `Validate Schema`, `Convert`, `Escape/Unescape`, `Generate Patch`, `Apply Patch`.
+- Nút chính theo mode: `Validate`, `Generate`, `Generate Mock`, `Validate Schema`, `Convert`, `Escape/Unescape`, `Generate Patch`, `Apply Patch`.
 - Với mode `/tree`, action chính vẫn là `Validate` để parse JSON nhanh, còn inspect path thao tác trong panel workspace.
 - Nút `Open` import file input có ở action bar mode thường; patch có `Open Base`, `Open Target`, `Open Patch`.
 - Nút `Share` có trên tất cả action bar; app tạo URL có query `?share=...` chứa state mode hiện tại, ưu tiên `navigator.share` và fallback copy link vào clipboard.
@@ -168,6 +178,7 @@ Legacy path:
 - `result.yaml` cho YAML output.
 - `result.xml` cho XML output.
 - `result.properties` cho Properties output.
+- `mock-data.json` cho schema mock mode.
 - `result.csv` hoặc `result.tsv` cho CSV output.
 - `result.txt` cho plaintext output ở escape mode.
 - `patch-result.json` cho patch mode.

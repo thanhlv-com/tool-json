@@ -22,6 +22,7 @@ import {
   escapeOrUnescapeJsonString,
   generateJsonDiffReport,
   generateJsonPatchOperations,
+  generateMockDataFromSchema,
   generateJsonSchemaFromSample,
   maskJsonSensitiveData,
   mergeJsonStructures,
@@ -43,6 +44,8 @@ const DEFAULT_JSON_INPUT =
   '{\n  "tool": "JSON Dev Tool",\n  "version": 1.0,\n  "features": [\n    "Format",\n    "Validate",\n    "Diff",\n    "Query",\n    "YAML"\n  ],\n  "is_awesome": true\n}';
 const DEFAULT_SCHEMA_INPUT =
   '{\n  "type": "object",\n  "properties": {\n    "tool": { "type": "string" },\n    "version": { "type": "number" }\n  },\n  "required": ["tool", "version"],\n  "additionalProperties": true\n}';
+const DEFAULT_SCHEMA_MOCK_INPUT =
+  '{\n  "type": "object",\n  "properties": {\n    "id": { "type": "integer", "minimum": 1 },\n    "name": { "type": "string", "minLength": 3 },\n    "email": { "type": "string", "format": "email" },\n    "role": { "type": "string", "enum": ["admin", "editor", "viewer"] },\n    "active": { "type": "boolean", "default": true },\n    "tags": {\n      "type": "array",\n      "items": { "type": "string" },\n      "minItems": 1,\n      "maxItems": 3\n    }\n  },\n  "required": ["id", "name", "email"],\n  "additionalProperties": false\n}';
 const DEFAULT_SCHEMA_IMPORTS_INPUT = '[]';
 const DEFAULT_PATCH_BASE_INPUT = '{\n  "status": "ok",\n  "code": 200\n}';
 const DEFAULT_PATCH_TARGET_INPUT = '{\n  "status": "error",\n  "code": 500,\n  "message": "Failed"\n}';
@@ -63,6 +66,7 @@ const DEFAULT_CSV_OPTIONS: CsvOptions = {
   quoteStrategy: 'auto',
   escapeStrategy: 'double',
 };
+const DEFAULT_MOCK_DATA_COUNT = 1;
 
 type InputMode = Exclude<Mode, 'diff' | 'patch' | 'merge'>;
 
@@ -73,6 +77,7 @@ const INPUT_MODES: InputMode[] = [
   'privacy',
   'convert',
   'schemaGenerate',
+  'schemaMock',
   'schemaValidate',
   'convertCsv',
   'escape',
@@ -87,6 +92,7 @@ const ALL_MODES: Mode[] = [
   'privacy',
   'convert',
   'schemaGenerate',
+  'schemaMock',
   'schemaValidate',
   'convertCsv',
   'escape',
@@ -114,6 +120,7 @@ type PersistedState = {
   csvOptions: CsvOptions;
   schemaDraft: SchemaDraft;
   schemaCustomKeywordsInput: string;
+  mockDataCount: number;
   pipelineStepsInput: string;
   privacyRulesInput: string;
   privacyPreviewMaskedOnly: boolean;
@@ -138,6 +145,7 @@ type WorkspaceSnapshotState = {
   schemaImportsInput?: string;
   schemaDraft?: SchemaDraft;
   schemaCustomKeywordsInput?: string;
+  mockDataCount?: number;
   pipelineStepsInput?: string;
   privacyRulesInput?: string;
   privacyPreviewMaskedOnly?: boolean;
@@ -175,6 +183,7 @@ type SharePayload = {
   schemaImportsInput?: string;
   schemaDraft?: SchemaDraft;
   schemaCustomKeywordsInput?: string;
+  mockDataCount?: number;
   pipelineStepsInput?: string;
   privacyRulesInput?: string;
   privacyPreviewMaskedOnly?: boolean;
@@ -203,13 +212,16 @@ const WORKSPACE_HISTORY_DEBOUNCE_MS = 700;
 const MAX_WORKSPACE_SNAPSHOT_TEXT_LENGTH = 250_000;
 
 function createDefaultInputByMode(value: string): Record<InputMode, string> {
-  return INPUT_MODES.reduce(
+  const defaults = INPUT_MODES.reduce(
     (result, inputMode) => {
       result[inputMode] = value;
       return result;
     },
     {} as Record<InputMode, string>,
   );
+
+  defaults.schemaMock = DEFAULT_SCHEMA_MOCK_INPUT;
+  return defaults;
 }
 
 function createDefaultPersistedState(): PersistedState {
@@ -233,6 +245,7 @@ function createDefaultPersistedState(): PersistedState {
     csvOptions: DEFAULT_CSV_OPTIONS,
     schemaDraft: 'draft-07',
     schemaCustomKeywordsInput: '',
+    mockDataCount: DEFAULT_MOCK_DATA_COUNT,
     pipelineStepsInput: DEFAULT_PIPELINE_STEPS_INPUT,
     privacyRulesInput: DEFAULT_PRIVACY_RULES_INPUT,
     privacyPreviewMaskedOnly: true,
@@ -401,6 +414,15 @@ function normalizeCsvOptions(options: Partial<CsvOptions> | undefined): CsvOptio
   };
 }
 
+function normalizeMockDataCount(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_MOCK_DATA_COUNT;
+  }
+
+  const integerValue = Math.trunc(value);
+  return Math.max(1, Math.min(200, integerValue));
+}
+
 function encodeBase64Url(value: string): string {
   const encodedBytes = new TextEncoder().encode(value);
   let binary = '';
@@ -471,6 +493,9 @@ function loadPersistedState(): PersistedState {
       ...defaults.inputByMode,
       ...(parsed.inputByMode ?? {}),
     };
+    if (!inputByMode.schemaMock.trim() || inputByMode.schemaMock === DEFAULT_JSON_INPUT) {
+      inputByMode.schemaMock = DEFAULT_SCHEMA_MOCK_INPUT;
+    }
     const csvOptions = {
       ...defaults.csvOptions,
       ...(parsed.csvOptions ?? {}),
@@ -485,6 +510,7 @@ function loadPersistedState(): PersistedState {
     const historyEnabled =
       typeof parsed.historyEnabled === 'boolean' ? parsed.historyEnabled : defaults.historyEnabled;
     const workspaceHistoryByMode = normalizeWorkspaceHistoryByMode(parsed.workspaceHistoryByMode);
+    const mockDataCount = normalizeMockDataCount(parsed.mockDataCount);
 
     return {
       ...defaults,
@@ -492,6 +518,7 @@ function loadPersistedState(): PersistedState {
       inputByMode,
       csvOptions,
       convertTargetFormat,
+      mockDataCount,
       version: 3,
       historyEnabled,
       workspaceHistoryByMode,
@@ -530,6 +557,7 @@ export function useJsonToolState(mode: Mode) {
   const [csvOptions, setCsvOptions] = useState<CsvOptions>(initialState.csvOptions);
   const [schemaDraft, setSchemaDraft] = useState<SchemaDraft>(initialState.schemaDraft);
   const [schemaCustomKeywordsInput, setSchemaCustomKeywordsInput] = useState<string>(initialState.schemaCustomKeywordsInput);
+  const [mockDataCount, setMockDataCountState] = useState<number>(normalizeMockDataCount(initialState.mockDataCount));
   const [pipelineStepsInput, setPipelineStepsInput] = useState<string>(initialState.pipelineStepsInput);
   const [privacyRulesInput, setPrivacyRulesInput] = useState<string>(initialState.privacyRulesInput);
   const [privacyPreviewMaskedOnly, setPrivacyPreviewMaskedOnly] = useState<boolean>(initialState.privacyPreviewMaskedOnly);
@@ -554,7 +582,8 @@ export function useJsonToolState(mode: Mode) {
   const appliedShareTokenRef = useRef<string | null>(null);
   const workspaceHistoryRestoreRef = useRef<boolean>(false);
   const inputMode: InputMode = mode === 'diff' || mode === 'patch' || mode === 'merge' ? 'format' : mode;
-  const input = syncInputAcrossModes ? sharedInput : inputByMode[inputMode];
+  const isInputSyncedForMode = syncInputAcrossModes && mode !== 'schemaMock';
+  const input = isInputSyncedForMode ? sharedInput : inputByMode[inputMode];
   const csvInputLooksLikeJson = mode === 'convertCsv' && isLikelyJsonInput(input);
   const autoProcessInputSize =
     mode === 'schemaValidate'
@@ -573,7 +602,7 @@ export function useJsonToolState(mode: Mode) {
 
   const setInput = useCallback(
     (value: string) => {
-      if (syncInputAcrossModes) {
+      if (isInputSyncedForMode) {
         setSharedInput(value);
       } else {
         setInputByMode((previous) => ({
@@ -582,26 +611,36 @@ export function useJsonToolState(mode: Mode) {
         }));
       }
     },
-    [inputMode, syncInputAcrossModes],
+    [inputMode, isInputSyncedForMode],
   );
 
   const setSyncInputAcrossModes = useCallback(
     (nextValue: boolean) => {
       if (nextValue) {
-        setSharedInput(inputByMode[inputMode]);
+        if (inputMode !== 'schemaMock') {
+          setSharedInput(inputByMode[inputMode]);
+        }
       } else {
-        setInputByMode(createDefaultInputByMode(sharedInput));
+        setInputByMode((previous) => ({
+          ...previous,
+          [inputMode]: inputMode === 'schemaMock' ? previous[inputMode] : sharedInput,
+        }));
       }
       setSyncInputAcrossModesState(nextValue);
     },
     [inputByMode, inputMode, sharedInput],
   );
 
+  const setMockDataCount = useCallback((value: number) => {
+    setMockDataCountState(normalizeMockDataCount(value));
+  }, []);
+
   const createWorkspaceSnapshotForMode = useCallback(
     (targetMode: Mode): WorkspaceSnapshotState => {
       const targetInputMode: InputMode =
         targetMode === 'diff' || targetMode === 'patch' || targetMode === 'merge' ? 'format' : targetMode;
-      const targetInput = syncInputAcrossModes ? sharedInput : inputByMode[targetInputMode];
+      const isTargetInputSynced = syncInputAcrossModes && targetMode !== 'schemaMock';
+      const targetInput = isTargetInputSynced ? sharedInput : inputByMode[targetInputMode];
       const baseSnapshot: WorkspaceSnapshotState = {
         syncInputAcrossModes,
         output,
@@ -646,6 +685,10 @@ export function useJsonToolState(mode: Mode) {
         inputSnapshot.convertTargetFormat = convertTargetFormat;
       }
 
+      if (targetMode === 'schemaMock') {
+        inputSnapshot.mockDataCount = mockDataCount;
+      }
+
       if (targetMode === 'convertCsv') {
         inputSnapshot.csvOptions = csvOptions;
       }
@@ -685,6 +728,7 @@ export function useJsonToolState(mode: Mode) {
       pipelineStepsInput,
       privacyPreviewMaskedOnly,
       privacyRulesInput,
+      mockDataCount,
       schemaCustomKeywordsInput,
       schemaDraft,
       schemaImportsInput,
@@ -726,7 +770,7 @@ export function useJsonToolState(mode: Mode) {
             [targetInputMode]: snapshot.input ?? '',
           }));
 
-          if (nextSyncInputAcrossModes) {
+          if (nextSyncInputAcrossModes && targetMode !== 'schemaMock') {
             setSharedInput(snapshot.input);
           }
         }
@@ -737,6 +781,10 @@ export function useJsonToolState(mode: Mode) {
 
         if (targetMode === 'convert' && isConvertTargetFormat(snapshot.convertTargetFormat)) {
           setConvertTargetFormat(snapshot.convertTargetFormat);
+        }
+
+        if (targetMode === 'schemaMock') {
+          setMockDataCountState(normalizeMockDataCount(snapshot.mockDataCount));
         }
 
         if (targetMode === 'convertCsv' && snapshot.csvOptions) {
@@ -1060,7 +1108,9 @@ export function useJsonToolState(mode: Mode) {
       const sharedValue = payload.input ?? '';
       const currentInputMode = mode as InputMode;
 
-      setSharedInput(sharedValue);
+      if (mode !== 'schemaMock') {
+        setSharedInput(sharedValue);
+      }
       setInputByMode((previous) => ({
         ...previous,
         [currentInputMode]: sharedValue,
@@ -1072,6 +1122,10 @@ export function useJsonToolState(mode: Mode) {
 
       if (mode === 'convert' && isConvertTargetFormat(payload.convertTargetFormat)) {
         setConvertTargetFormat(payload.convertTargetFormat);
+      }
+
+      if (mode === 'schemaMock') {
+        setMockDataCountState(normalizeMockDataCount(payload.mockDataCount));
       }
 
       if (mode === 'convertCsv') {
@@ -1194,6 +1248,21 @@ export function useJsonToolState(mode: Mode) {
           const schema = generateJsonSchemaFromSample(parsed);
           setOutput(JSON.stringify(schema, null, 2));
           setErrorStatus({ message: 'Generated JSON Schema', isError: false });
+          return;
+        }
+
+        if (mode === 'schemaMock') {
+          setConvertSourceFormat(null);
+          setOutputLanguage('json');
+          const schema = JSON.parse(customInput);
+          const mockData = generateMockDataFromSchema(schema, {
+            count: mockDataCount,
+          });
+          setOutput(JSON.stringify(mockData, null, 2));
+          setErrorStatus({
+            message: `Generated mock data (${mockDataCount} row${mockDataCount > 1 ? 's' : ''})`,
+            isError: false,
+          });
           return;
         }
 
@@ -1394,6 +1463,7 @@ export function useJsonToolState(mode: Mode) {
       csvOptions,
       input,
       jsonPath,
+      mockDataCount,
       mode,
       pipelineStepsInput,
       privacyPreviewMaskedOnly,
@@ -1595,14 +1665,21 @@ export function useJsonToolState(mode: Mode) {
         event.preventDefault();
         if (mode === 'merge') {
           handleFormatMerge();
-        } else if (mode !== 'patch' && mode !== 'pipeline' && mode !== 'privacy') {
+        } else if (mode !== 'patch' && mode !== 'pipeline' && mode !== 'privacy' && mode !== 'schemaMock') {
           processJson('format');
         }
       }
 
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'm') {
         event.preventDefault();
-        if (mode !== 'patch' && mode !== 'merge' && mode !== 'tree' && mode !== 'pipeline' && mode !== 'privacy') {
+        if (
+          mode !== 'patch' &&
+          mode !== 'merge' &&
+          mode !== 'tree' &&
+          mode !== 'pipeline' &&
+          mode !== 'privacy' &&
+          mode !== 'schemaMock'
+        ) {
           processJson('minify');
         }
       }
@@ -1776,6 +1853,10 @@ export function useJsonToolState(mode: Mode) {
       payload.convertTargetFormat = convertTargetFormat;
     }
 
+    if (mode === 'schemaMock') {
+      payload.mockDataCount = mockDataCount;
+    }
+
     if (mode === 'convertCsv') {
       payload.csvOptions = csvOptions;
     }
@@ -1806,6 +1887,7 @@ export function useJsonToolState(mode: Mode) {
     jsonPath,
     mergeLeftInput,
     mergeRightInput,
+    mockDataCount,
     mode,
     patchBaseInput,
     patchOperationsInput,
@@ -1976,6 +2058,7 @@ export function useJsonToolState(mode: Mode) {
       csvOptions,
       schemaDraft,
       schemaCustomKeywordsInput,
+      mockDataCount,
       pipelineStepsInput,
       privacyRulesInput,
       privacyPreviewMaskedOnly,
@@ -2009,6 +2092,7 @@ export function useJsonToolState(mode: Mode) {
     patchTargetInput,
     mergeLeftInput,
     mergeRightInput,
+    mockDataCount,
     pipelineStepsInput,
     privacyPreviewMaskedOnly,
     privacyRulesInput,
@@ -2068,6 +2152,8 @@ export function useJsonToolState(mode: Mode) {
     setSchemaDraft,
     schemaCustomKeywordsInput,
     setSchemaCustomKeywordsInput,
+    mockDataCount,
+    setMockDataCount,
     pipelineStepsInput,
     setPipelineStepsInput,
     privacyRulesInput,

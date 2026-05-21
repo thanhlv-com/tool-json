@@ -114,6 +114,8 @@ export function JsonToolPage() {
     setSchemaDraft,
     schemaCustomKeywordsInput,
     setSchemaCustomKeywordsInput,
+    mockDataCount,
+    setMockDataCount,
     pipelineStepsInput,
     setPipelineStepsInput,
     privacyRulesInput,
@@ -246,6 +248,7 @@ export function JsonToolPage() {
               csvOptions={csvOptions}
               schemaDraft={schemaDraft}
               schemaCustomKeywordsInput={schemaCustomKeywordsInput}
+              mockDataCount={mockDataCount}
               privacyPreviewMaskedOnly={privacyPreviewMaskedOnly}
               onJsonPathChange={setJsonPath}
               onConvertTargetFormatChange={setConvertTargetFormat}
@@ -262,6 +265,7 @@ export function JsonToolPage() {
               onCsvEscapeStrategyChange={(escapeStrategy) => setCsvOptions((previous) => ({ ...previous, escapeStrategy }))}
               onSchemaDraftChange={setSchemaDraft}
               onSchemaCustomKeywordsInputChange={setSchemaCustomKeywordsInput}
+              onMockDataCountChange={setMockDataCount}
               onPrivacyPreviewMaskedOnlyChange={setPrivacyPreviewMaskedOnly}
             />
           )}

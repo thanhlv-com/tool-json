@@ -30,6 +30,7 @@ type ActionBarProps = {
   csvOptions: CsvOptions;
   schemaDraft: SchemaDraft;
   schemaCustomKeywordsInput: string;
+  mockDataCount: number;
   privacyPreviewMaskedOnly: boolean;
   onJsonPathChange: (value: string) => void;
   onConvertTargetFormatChange: (value: ConvertTargetFormat) => void;
@@ -46,6 +47,7 @@ type ActionBarProps = {
   onCsvEscapeStrategyChange: (value: CsvOptions['escapeStrategy']) => void;
   onSchemaDraftChange: (value: SchemaDraft) => void;
   onSchemaCustomKeywordsInputChange: (value: string) => void;
+  onMockDataCountChange: (value: number) => void;
   onPrivacyPreviewMaskedOnlyChange: (value: boolean) => void;
 };
 
@@ -69,6 +71,7 @@ export function ActionBar({
   csvOptions,
   schemaDraft,
   schemaCustomKeywordsInput,
+  mockDataCount,
   privacyPreviewMaskedOnly,
   onJsonPathChange,
   onConvertTargetFormatChange,
@@ -85,6 +88,7 @@ export function ActionBar({
   onCsvEscapeStrategyChange,
   onSchemaDraftChange,
   onSchemaCustomKeywordsInputChange,
+  onMockDataCountChange,
   onPrivacyPreviewMaskedOnlyChange,
 }: ActionBarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -92,6 +96,7 @@ export function ActionBar({
   const hideFormat =
     mode === 'query' ||
     mode === 'schemaGenerate' ||
+    mode === 'schemaMock' ||
     mode === 'schemaValidate' ||
     mode === 'convertCsv' ||
     mode === 'escape' ||
@@ -102,6 +107,8 @@ export function ActionBar({
   const actionLabel =
     mode === 'schemaGenerate'
       ? 'Generate'
+      : mode === 'schemaMock'
+        ? 'Generate Mock'
       : mode === 'schemaValidate'
         ? 'Validate Schema'
         : mode === 'pipeline'
@@ -132,8 +139,10 @@ export function ActionBar({
               : outputLanguage === 'plaintext'
                 ? 'pipeline-result.txt'
                 : 'pipeline-result.json'
-          : mode === 'privacy'
-            ? 'masked-result.json'
+        : mode === 'privacy'
+          ? 'masked-result.json'
+        : mode === 'schemaMock'
+          ? 'mock-data.json'
         : mode === 'escape' && outputLanguage === 'plaintext'
           ? 'result.txt'
           : 'result.json';
@@ -290,6 +299,20 @@ export function ActionBar({
               />
             </label>
           </div>
+        )}
+
+        {mode === 'schemaMock' && (
+          <label className="flex items-center gap-1.5 text-[11px] text-[#A0A0A0]">
+            <span className="text-[#808080]">Rows</span>
+            <input
+              type="number"
+              min={1}
+              max={200}
+              value={mockDataCount}
+              onChange={(event) => onMockDataCountChange(Number(event.target.value))}
+              className="bg-[#121214] border border-[#333] text-xs text-[#A0A0A0] outline-none rounded px-2 py-1 w-24 font-mono focus:border-blue-500 transition-colors"
+            />
+          </label>
         )}
 
         {mode === 'privacy' && (

@@ -7,6 +7,7 @@ export type Mode =
   | 'privacy'
   | 'convert'
   | 'schemaGenerate'
+  | 'schemaMock'
   | 'schemaValidate'
   | 'convertCsv'
   | 'escape'

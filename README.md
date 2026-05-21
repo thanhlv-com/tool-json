@@ -30,6 +30,7 @@ npm run preview
 - `/tree`: khám phá cây JSON (expand/collapse) và inspect path/node theo JSON Pointer hoặc JSONPath.
 - `/convert`: convert từ JSON sang `YAML`, `XML`, hoặc `Properties` (input bắt buộc là JSON hợp lệ).
 - `/schema-generate`: tạo JSON Schema từ sample JSON.
+- `/schema-mock`: sinh mock data từ JSON Schema (hỗ trợ `type`, `enum`, `const`, `format`, `oneOf/anyOf/allOf`, `$ref` local, `min/max`).
 - `/schema-validate`: validate JSON data theo JSON Schema (chọn draft + custom keywords).
 - `/csv`: chuyển đổi JSON <-> CSV (delimiter/header/quote/escape options).
 - `/escape`: escape/unescape JSON string.

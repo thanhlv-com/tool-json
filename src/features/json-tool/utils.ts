@@ -191,6 +191,458 @@ export function validateJsonBySchema(
   };
 }
 
+type JsonSchemaNode = JsonSchema | boolean;
+
+type MockGenerationContext = {
+  rootSchema: JsonSchemaNode;
+  random: () => number;
+  maxDepth: number;
+  now: Date;
+  generatedCount: number;
+  refVisitCountByPointer: Record<string, number>;
+};
+
+function isJsonSchemaRecord(value: unknown): value is JsonSchema {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function createSeededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+
+  if (state === 0) {
+    state = 0x9e3779b9;
+  }
+
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+function randomInt(min: number, max: number, random: () => number): number {
+  if (max <= min) {
+    return min;
+  }
+
+  return min + Math.floor(random() * (max - min + 1));
+}
+
+function normalizeInteger(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.trunc(value);
+}
+
+function cloneMockValue<T>(value: T): T {
+  try {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(value);
+    }
+
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return value;
+  }
+}
+
+function decodeJsonPointerToken(token: string): string {
+  return token.replace(/~1/g, '/').replace(/~0/g, '~');
+}
+
+function resolveLocalSchemaRef(rootSchema: JsonSchemaNode, ref: string): JsonSchemaNode | null {
+  if (ref === '#') {
+    return rootSchema;
+  }
+
+  if (!ref.startsWith('#/')) {
+    return null;
+  }
+
+  const tokens = ref
+    .slice(2)
+    .split('/')
+    .map((token) => decodeJsonPointerToken(token));
+
+  let current: unknown = rootSchema;
+  for (const token of tokens) {
+    if (Array.isArray(current)) {
+      const numericToken = Number(token);
+      if (!Number.isInteger(numericToken) || numericToken < 0 || numericToken >= current.length) {
+        return null;
+      }
+      current = current[numericToken];
+      continue;
+    }
+
+    if (!isJsonSchemaRecord(current)) {
+      return null;
+    }
+
+    current = current[token];
+  }
+
+  if (typeof current === 'boolean' || isJsonSchemaRecord(current)) {
+    return current;
+  }
+
+  return null;
+}
+
+function coerceStringLength(value: string, minLength: number, maxLength: number): string {
+  let normalized = value;
+
+  if (normalized.length < minLength) {
+    normalized = `${normalized}${'x'.repeat(minLength - normalized.length)}`;
+  }
+
+  if (normalized.length > maxLength) {
+    normalized = normalized.slice(0, maxLength);
+  }
+
+  return normalized;
+}
+
+function createUuid(random: () => number): string {
+  const template = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+  return template.replace(/[xy]/g, (character) => {
+    const randomNibble = Math.floor(random() * 16);
+    const nibble = character === 'x' ? randomNibble : (randomNibble & 0x3) | 0x8;
+    return nibble.toString(16);
+  });
+}
+
+function generateStringValue(
+  schema: JsonSchema,
+  path: string,
+  context: MockGenerationContext,
+  minLength: number,
+  maxLength: number,
+): string {
+  const format = typeof schema.format === 'string' ? schema.format : '';
+  const runningCount = context.generatedCount;
+
+  if (format === 'email') {
+    return coerceStringLength(`user${runningCount}@example.com`, minLength, maxLength);
+  }
+
+  if (format === 'uri' || format === 'url') {
+    return coerceStringLength(`https://example.com/resource/${runningCount}`, minLength, maxLength);
+  }
+
+  if (format === 'date-time') {
+    const date = new Date(context.now.getTime() + runningCount * 60_000);
+    return coerceStringLength(date.toISOString(), minLength, maxLength);
+  }
+
+  if (format === 'date') {
+    const date = new Date(context.now.getTime() + runningCount * 86_400_000);
+    return coerceStringLength(date.toISOString().slice(0, 10), minLength, maxLength);
+  }
+
+  if (format === 'uuid') {
+    return coerceStringLength(createUuid(context.random), minLength, maxLength);
+  }
+
+  if (format === 'ipv4') {
+    const octetA = randomInt(1, 223, context.random);
+    const octetB = randomInt(0, 255, context.random);
+    const octetC = randomInt(0, 255, context.random);
+    const octetD = randomInt(1, 254, context.random);
+    return coerceStringLength(`${octetA}.${octetB}.${octetC}.${octetD}`, minLength, maxLength);
+  }
+
+  const pattern = typeof schema.pattern === 'string' ? schema.pattern : '';
+  if (pattern.includes('[0-9]')) {
+    const digits = String(randomInt(10000, 99999, context.random));
+    return coerceStringLength(digits, minLength, maxLength);
+  }
+
+  if (pattern.includes('[A-Z]')) {
+    return coerceStringLength(`CODE${runningCount}`, minLength, maxLength);
+  }
+
+  const leafKey = path.split('.').pop()?.replace(/\[[0-9]+\]/g, '') || 'value';
+  return coerceStringLength(`${leafKey}_${runningCount}`, minLength, maxLength);
+}
+
+function inferSchemaType(schema: JsonSchema): string {
+  if (typeof schema.type === 'string') {
+    return schema.type;
+  }
+
+  if (Array.isArray(schema.type)) {
+    const candidates = schema.type.filter((item): item is string => typeof item === 'string');
+    if (candidates.length > 0) {
+      return candidates.find((candidate) => candidate !== 'null') ?? candidates[0];
+    }
+  }
+
+  if (isJsonSchemaRecord(schema.properties)) {
+    return 'object';
+  }
+
+  if (schema.items !== undefined || Array.isArray(schema.prefixItems)) {
+    return 'array';
+  }
+
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) {
+    const first = schema.enum[0];
+    if (first === null) return 'null';
+    if (Array.isArray(first)) return 'array';
+    if (typeof first === 'object') return 'object';
+    if (typeof first === 'number' && Number.isInteger(first)) return 'integer';
+    return typeof first;
+  }
+
+  return 'object';
+}
+
+function generateBySchema(
+  schemaNode: JsonSchemaNode,
+  path: string,
+  depth: number,
+  context: MockGenerationContext,
+): unknown {
+  if (depth > context.maxDepth) {
+    return null;
+  }
+
+  if (schemaNode === true) {
+    return {};
+  }
+
+  if (schemaNode === false) {
+    return null;
+  }
+
+  if (typeof schemaNode.$ref === 'string') {
+    const refPointer = schemaNode.$ref;
+    const currentVisits = context.refVisitCountByPointer[refPointer] ?? 0;
+
+    if (currentVisits > 4) {
+      return null;
+    }
+
+    const resolvedSchema = resolveLocalSchemaRef(context.rootSchema, refPointer);
+    if (resolvedSchema) {
+      context.refVisitCountByPointer[refPointer] = currentVisits + 1;
+      const generated = generateBySchema(resolvedSchema, path, depth + 1, context);
+      context.refVisitCountByPointer[refPointer] = currentVisits;
+      return generated;
+    }
+  }
+
+  if (schemaNode.const !== undefined) {
+    return cloneMockValue(schemaNode.const);
+  }
+
+  if (Array.isArray(schemaNode.enum) && schemaNode.enum.length > 0) {
+    const selected = schemaNode.enum[randomInt(0, schemaNode.enum.length - 1, context.random)];
+    return cloneMockValue(selected);
+  }
+
+  if (schemaNode.example !== undefined) {
+    return cloneMockValue(schemaNode.example);
+  }
+
+  if (Array.isArray(schemaNode.examples) && schemaNode.examples.length > 0) {
+    const selected = schemaNode.examples[randomInt(0, schemaNode.examples.length - 1, context.random)];
+    return cloneMockValue(selected);
+  }
+
+  if (schemaNode.default !== undefined) {
+    return cloneMockValue(schemaNode.default);
+  }
+
+  if (Array.isArray(schemaNode.oneOf) && schemaNode.oneOf.length > 0) {
+    const selectedSchema = schemaNode.oneOf[randomInt(0, schemaNode.oneOf.length - 1, context.random)];
+    return generateBySchema(selectedSchema as JsonSchemaNode, path, depth + 1, context);
+  }
+
+  if (Array.isArray(schemaNode.anyOf) && schemaNode.anyOf.length > 0) {
+    const selectedSchema = schemaNode.anyOf[randomInt(0, schemaNode.anyOf.length - 1, context.random)];
+    return generateBySchema(selectedSchema as JsonSchemaNode, path, depth + 1, context);
+  }
+
+  if (Array.isArray(schemaNode.allOf) && schemaNode.allOf.length > 0) {
+    const generatedParts = schemaNode.allOf.map((childSchema, childIndex) =>
+      generateBySchema(childSchema as JsonSchemaNode, `${path}.allOf[${childIndex}]`, depth + 1, context),
+    );
+
+    if (generatedParts.every((part) => part && typeof part === 'object' && !Array.isArray(part))) {
+      return Object.assign({}, ...generatedParts);
+    }
+
+    return generatedParts[generatedParts.length - 1] ?? null;
+  }
+
+  const normalizedType = inferSchemaType(schemaNode);
+
+  if (normalizedType === 'object') {
+    const properties = isJsonSchemaRecord(schemaNode.properties)
+      ? (schemaNode.properties as Record<string, JsonSchemaNode>)
+      : {};
+    const required = Array.isArray(schemaNode.required)
+      ? schemaNode.required.filter((item): item is string => typeof item === 'string')
+      : [];
+    const optionalKeys = Object.keys(properties).filter((key) => !required.includes(key));
+
+    const objectResult: Record<string, unknown> = {};
+    required.forEach((requiredKey) => {
+      objectResult[requiredKey] = generateBySchema(properties[requiredKey] ?? true, `${path}.${requiredKey}`, depth + 1, context);
+    });
+
+    const minProperties = Math.max(0, normalizeInteger(schemaNode.minProperties, 0));
+    const maxPropertiesRaw = normalizeInteger(schemaNode.maxProperties, Number.POSITIVE_INFINITY);
+    const maxProperties =
+      Number.isFinite(maxPropertiesRaw) && maxPropertiesRaw >= minProperties ? maxPropertiesRaw : Number.POSITIVE_INFINITY;
+
+    for (const key of optionalKeys) {
+      if (Object.keys(objectResult).length >= maxProperties) {
+        break;
+      }
+      if (context.random() <= 0.6) {
+        objectResult[key] = generateBySchema(properties[key], `${path}.${key}`, depth + 1, context);
+      }
+    }
+
+    const additionalPropertiesSchema = schemaNode.additionalProperties;
+    let extraIndex = 1;
+    while (Object.keys(objectResult).length < minProperties) {
+      if (isJsonSchemaRecord(additionalPropertiesSchema) || typeof additionalPropertiesSchema === 'boolean') {
+        const extraKey = `extraField${extraIndex}`;
+        if (!Object.prototype.hasOwnProperty.call(objectResult, extraKey)) {
+          objectResult[extraKey] = generateBySchema(
+            additionalPropertiesSchema,
+            `${path}.${extraKey}`,
+            depth + 1,
+            context,
+          );
+        }
+        extraIndex += 1;
+      } else if (optionalKeys.length > 0) {
+        const missingOptional = optionalKeys.find((key) => !Object.prototype.hasOwnProperty.call(objectResult, key));
+        if (!missingOptional) {
+          break;
+        }
+        objectResult[missingOptional] = generateBySchema(
+          properties[missingOptional],
+          `${path}.${missingOptional}`,
+          depth + 1,
+          context,
+        );
+      } else {
+        break;
+      }
+    }
+
+    return objectResult;
+  }
+
+  if (normalizedType === 'array') {
+    const minItems = Math.max(0, normalizeInteger(schemaNode.minItems, 1));
+    const maxItemsRaw = normalizeInteger(schemaNode.maxItems, Math.max(minItems, 4));
+    const maxItemsCap = Math.max(minItems, Math.min(8, Number.isFinite(maxItemsRaw) ? maxItemsRaw : minItems + 3));
+    const targetLength = randomInt(minItems, maxItemsCap, context.random);
+
+    const prefixItems = Array.isArray(schemaNode.prefixItems) ? (schemaNode.prefixItems as JsonSchemaNode[]) : [];
+    const itemSchema = (schemaNode.items ?? true) as JsonSchemaNode;
+
+    const items: unknown[] = [];
+    for (let index = 0; index < targetLength; index += 1) {
+      const currentSchema = prefixItems[index] ?? itemSchema;
+      items.push(generateBySchema(currentSchema, `${path}[${index}]`, depth + 1, context));
+    }
+
+    return items;
+  }
+
+  if (normalizedType === 'string') {
+    const minLength = Math.max(0, normalizeInteger(schemaNode.minLength, 3));
+    const maxLengthRaw = normalizeInteger(schemaNode.maxLength, Math.max(minLength, 24));
+    const maxLength = Math.max(minLength, maxLengthRaw);
+    return generateStringValue(schemaNode, path, context, minLength, maxLength);
+  }
+
+  if (normalizedType === 'integer' || normalizedType === 'number') {
+    const minimum =
+      typeof schemaNode.minimum === 'number'
+        ? schemaNode.minimum
+        : typeof schemaNode.exclusiveMinimum === 'number'
+          ? schemaNode.exclusiveMinimum + (normalizedType === 'integer' ? 1 : 0.1)
+          : 0;
+    const maximum =
+      typeof schemaNode.maximum === 'number'
+        ? schemaNode.maximum
+        : typeof schemaNode.exclusiveMaximum === 'number'
+          ? schemaNode.exclusiveMaximum - (normalizedType === 'integer' ? 1 : 0.1)
+          : minimum + 100;
+    const safeMaximum = maximum < minimum ? minimum : maximum;
+    const multipleOf = typeof schemaNode.multipleOf === 'number' && schemaNode.multipleOf > 0 ? schemaNode.multipleOf : null;
+
+    if (normalizedType === 'integer') {
+      let result = randomInt(Math.ceil(minimum), Math.floor(safeMaximum), context.random);
+      if (multipleOf) {
+        result = Math.round(result / multipleOf) * multipleOf;
+      }
+      return Math.trunc(result);
+    }
+
+    let result = minimum + context.random() * (safeMaximum - minimum);
+    if (multipleOf) {
+      result = Math.round(result / multipleOf) * multipleOf;
+    }
+    return Number(result.toFixed(6));
+  }
+
+  if (normalizedType === 'boolean') {
+    return context.random() >= 0.5;
+  }
+
+  if (normalizedType === 'null') {
+    return null;
+  }
+
+  return {};
+}
+
+export function generateMockDataFromSchema(
+  schema: unknown,
+  options?: {
+    count?: number;
+    seed?: number;
+    maxDepth?: number;
+  },
+): unknown {
+  if (!isJsonSchemaRecord(schema) && typeof schema !== 'boolean') {
+    throw new Error('Schema must be a JSON object or boolean');
+  }
+
+  const count = Math.max(1, normalizeInteger(options?.count, 1));
+  const seed = normalizeInteger(options?.seed, Date.now());
+  const maxDepth = Math.max(1, normalizeInteger(options?.maxDepth, 8));
+  const random = createSeededRandom(seed);
+
+  const context: MockGenerationContext = {
+    rootSchema: schema,
+    random,
+    maxDepth,
+    now: new Date(),
+    generatedCount: 0,
+    refVisitCountByPointer: {},
+  };
+
+  const items: unknown[] = [];
+  for (let index = 0; index < count; index += 1) {
+    context.generatedCount = index + 1;
+    items.push(generateBySchema(schema, '$', 0, context));
+  }
+
+  return count === 1 ? items[0] : items;
+}
+
 function parseCsvRow(row: string, delimiter: string): string[] {
   const result: string[] = [];
   let current = '';

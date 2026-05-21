@@ -9,6 +9,7 @@ export const MODE_PATHS: Record<Mode, string> = {
   privacy: '/privacy',
   convert: '/convert',
   schemaGenerate: '/schema-generate',
+  schemaMock: '/schema-mock',
   schemaValidate: '/schema-validate',
   convertCsv: '/csv',
   escape: '/escape',
