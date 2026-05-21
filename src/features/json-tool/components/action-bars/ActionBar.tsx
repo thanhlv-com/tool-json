@@ -10,6 +10,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { HelpPopupButton } from '../workspaces/HelpPopupButton';
+import { ModeGuideContent, getModeGuideTitle } from './modeGuideContent';
 import type {
   ConvertSourceFormat,
   ConvertTargetFormat,
@@ -104,9 +105,6 @@ export function ActionBar({
     mode === 'pipeline' ||
     mode === 'privacy';
   const hideMinify = hideFormat || mode === 'tree';
-  const showPipelineGuide = mode === 'pipeline';
-  const showPrivacyGuide = mode === 'privacy';
-  const showGuideButton = showPipelineGuide || showPrivacyGuide;
 
   const actionLabel =
     mode === 'schemaGenerate'
@@ -343,33 +341,13 @@ export function ActionBar({
         )}
 
         <div className="h-4 w-[1px] bg-[#333]"></div>
-        {showGuideButton && (
-          <HelpPopupButton
-            title={showPipelineGuide ? 'Supported step types' : 'Supported rule types'}
-            buttonLabel="View Guide"
-            buttonClassName="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
-          >
-            {showPipelineGuide ? (
-              <div className="space-y-1">
-                <div>`query`: {`{ "type": "query", "path": "$.items[*]" }`}</div>
-                <div>`set`: {`{ "type": "set", "path": "/meta/version", "value": "2.0.0" }`}</div>
-                <div>`remove`: {`{ "type": "remove", "path": "/secret" }`}</div>
-                <div>`pick`: {`{ "type": "pick", "paths": ["/id", "/profile/name"] }`}</div>
-                <div>`mask`: {`{ "type": "mask", "rules": { "keys": ["token"] } }`}</div>
-                <div>`convert`: {`{ "type": "convert", "target": "json|yaml|xml|properties" }`}</div>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <div>`key`: {`{ "keys": ["password", "token"] }`}</div>
-                <div>`jsonPath`: {`{ "jsonPathPatterns": ["$.users[*].email", "$..secret"] }`}</div>
-                <div className="pt-1 uppercase tracking-wide text-[#A2AAB8]">Supported properties</div>
-                <div>`maskText`: {`{ "maskText": "***REDACTED***" }`}</div>
-                <div>`keepStartVisible`: {`{ "keepStartVisible": 2 }`} (integer, &gt;= 0)</div>
-                <div>`keepEndVisible`: {`{ "keepEndVisible": 4 }`} (integer, &gt;= 0)</div>
-              </div>
-            )}
-          </HelpPopupButton>
-        )}
+        <HelpPopupButton
+          title={getModeGuideTitle(mode)}
+          buttonLabel="View Guide"
+          buttonClassName="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <ModeGuideContent mode={mode} />
+        </HelpPopupButton>
         <button
           onClick={onShare}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"

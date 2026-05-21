@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { CheckCircle2, Copy, Download, GitCompareArrows, Share2, Upload, Wand2, XCircle } from 'lucide-react';
+import { HelpPopupButton } from '../workspaces/HelpPopupButton';
 import type { ErrorStatus } from '../../types';
+import { ModeGuideContent, getModeGuideTitle } from './modeGuideContent';
 
 type PatchActionBarProps = {
   output: string;
@@ -120,6 +122,13 @@ export function PatchActionBar({
         )}
 
         <div className="h-4 w-[1px] bg-[#333]"></div>
+        <HelpPopupButton
+          title={getModeGuideTitle('patch')}
+          buttonLabel="View Guide"
+          buttonClassName="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <ModeGuideContent mode="patch" />
+        </HelpPopupButton>
         <button
           onClick={onShare}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"

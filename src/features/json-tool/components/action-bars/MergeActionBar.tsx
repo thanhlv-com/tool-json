@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { AlignLeft, CheckCircle2, Copy, Download, GitMerge, Share2, Upload, XCircle } from 'lucide-react';
+import { HelpPopupButton } from '../workspaces/HelpPopupButton';
 import type { ErrorStatus } from '../../types';
+import { ModeGuideContent, getModeGuideTitle } from './modeGuideContent';
 
 type MergeActionBarProps = {
   output: string;
@@ -98,6 +100,13 @@ export function MergeActionBar({
         )}
 
         <div className="h-4 w-[1px] bg-[#333]"></div>
+        <HelpPopupButton
+          title={getModeGuideTitle('merge')}
+          buttonLabel="View Guide"
+          buttonClassName="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+        >
+          <ModeGuideContent mode="merge" />
+        </HelpPopupButton>
         <button
           onClick={onShare}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"

@@ -1,6 +1,8 @@
 import { Share2 } from 'lucide-react';
+import { HelpPopupButton } from '../workspaces/HelpPopupButton';
 import type { ErrorStatus } from '../../types';
 import type { JsonDiffReport } from '../../utils';
+import { ModeGuideContent, getModeGuideTitle } from './modeGuideContent';
 
 type DiffActionBarProps = {
   diffReport: JsonDiffReport | null;
@@ -41,6 +43,13 @@ export function DiffActionBar({ diffReport, diffParseError, errorStatus, onForma
         >
           Format
         </button>
+        <HelpPopupButton
+          title={getModeGuideTitle('diff')}
+          buttonLabel="View Guide"
+          buttonClassName="rounded border border-[#2E2E30] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#A8A8AA] transition-colors hover:border-[#4A4A4D] hover:text-[#E0E0E0]"
+        >
+          <ModeGuideContent mode="diff" />
+        </HelpPopupButton>
         <button
           onClick={onShare}
           className="rounded border border-[#2E2E30] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#A8A8AA] transition-colors hover:border-[#4A4A4D] hover:text-[#E0E0E0]"
