@@ -1,0 +1,21 @@
+# JSON Dev Tool
+
+- Canonical site: https://json-tools.thanhlv.com/
+- Main app route: https://json-tools.thanhlv.com/editor
+- Purpose: browser-based JSON utilities for formatting, diff, merge, query, schema, CSV, privacy masking, pipeline transforms, and JSON Patch.
+
+## Primary routes
+- /editor
+- /diff
+- /merge
+- /query
+- /pipeline
+- /privacy
+- /tree
+- /convert
+- /schema-generate
+- /schema-mock
+- /schema-validate
+- /csv
+- /escape
+- /patch
