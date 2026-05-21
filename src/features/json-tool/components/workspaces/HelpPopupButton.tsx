@@ -3,10 +3,11 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 type HelpPopupButtonProps = {
   title: string;
   buttonLabel: string;
+  buttonClassName?: string;
   children: ReactNode;
 };
 
-export function HelpPopupButton({ title, buttonLabel, children }: HelpPopupButtonProps) {
+export function HelpPopupButton({ title, buttonLabel, buttonClassName, children }: HelpPopupButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dialogTitleId = useId();
 
@@ -32,7 +33,10 @@ export function HelpPopupButton({ title, buttonLabel, children }: HelpPopupButto
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center justify-center rounded border border-[#2D313A] px-2 py-1 text-[10px] font-mono uppercase tracking-wide text-[#C7CED9] transition-colors hover:border-[#3E4552] hover:text-white"
+        className={
+          buttonClassName ??
+          'inline-flex items-center justify-center rounded border border-[#2D313A] px-2 py-1 text-[10px] font-mono uppercase tracking-wide text-[#C7CED9] transition-colors hover:border-[#3E4552] hover:text-white'
+        }
       >
         {buttonLabel}
       </button>
