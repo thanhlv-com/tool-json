@@ -361,7 +361,9 @@ export function TreeExplorerWorkspace({
         <div key={pointer || '$'} className="text-xs">
           <div
             className={`flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer ${
-              isSelected ? 'bg-blue-500/15 text-blue-200' : 'text-[#334155] dark:text-[#D0D0D0] hover:bg-[#1D1D20]'
+              isSelected
+                ? 'bg-blue-500/15 text-blue-700 dark:text-blue-200'
+                : 'text-[#334155] dark:text-[#D0D0D0] hover:bg-[#EEF2F7] dark:hover:bg-[#1D1D20]'
             }`}
             style={{ paddingLeft: `${depth * 14 + 8}px` }}
             onClick={() => {
@@ -372,7 +374,7 @@ export function TreeExplorerWorkspace({
             {isContainer ? (
               <button
                 type="button"
-                className="flex h-4 w-4 items-center justify-center text-[#64748B] dark:text-[#7F8792] hover:text-[#334155] dark:text-[#D0D0D0]"
+                className="flex h-4 w-4 items-center justify-center text-[#64748B] dark:text-[#7F8792] hover:text-[#334155] dark:hover:text-[#D0D0D0]"
                 onClick={(event) => {
                   event.stopPropagation();
                   setExpandedPointers((previous) => {
