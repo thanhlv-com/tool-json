@@ -149,11 +149,11 @@ export function ModeGuideContent({ mode }: ModeGuideContentProps) {
   return (
     <div className="space-y-4">
       <section className="space-y-1">
-        <div className="uppercase tracking-wide text-[#A2AAB8]">Purpose</div>
-        <p className="text-[#C7CED9]">{guide.purpose}</p>
+        <div className="uppercase tracking-wide text-[#64748B] dark:text-[#A2AAB8]">Purpose</div>
+        <p className="text-[#334155] dark:text-[#C7CED9]">{guide.purpose}</p>
       </section>
       <section className="space-y-1">
-        <div className="uppercase tracking-wide text-[#A2AAB8]">How to use</div>
+        <div className="uppercase tracking-wide text-[#64748B] dark:text-[#A2AAB8]">How to use</div>
         <ol className="list-decimal space-y-1 pl-4">
           {guide.steps.map((step) => (
             <li key={step}>{step}</li>

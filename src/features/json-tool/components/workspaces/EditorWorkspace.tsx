@@ -345,12 +345,12 @@ export function EditorWorkspace({
 
   return (
     <>
-      <section className="flex min-h-[240px] md:min-h-0 flex-col border-b border-[#262626] md:border-b-0 md:border-r">
-        <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+      <section className="flex min-h-[240px] md:min-h-0 flex-col border-b border-[#D8DEE6] dark:border-[#262626] md:border-b-0 md:border-r">
+        <div className="flex items-center justify-between px-4 py-2 bg-[#FFFFFF] dark:bg-[#121214] text-[10px] font-mono text-[#6B7280] dark:text-[#606060] border-b border-[#D8DEE6] dark:border-[#262626]">
           <span>{leftLabel}</span>
           <span>UTF-8</span>
         </div>
-        <div className="flex-1 bg-[#0F0F11]">
+        <div className="flex-1 bg-[#F7F8FA] dark:bg-[#0F0F11]">
           <Editor
             height="100%"
             language={inputLanguage}
@@ -380,21 +380,21 @@ export function EditorWorkspace({
       </section>
 
       <section className="flex min-h-[240px] md:min-h-0 flex-col">
-        <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+        <div className="flex items-center justify-between px-4 py-2 bg-[#FFFFFF] dark:bg-[#121214] text-[10px] font-mono text-[#6B7280] dark:text-[#606060] border-b border-[#D8DEE6] dark:border-[#262626]">
           <div className="flex gap-4">
             <span className="text-blue-400 border-b border-blue-500 pb-1">{rightLabel}</span>
           </div>
-          <div className="flex gap-2 text-[#808080]">
-            <button onClick={onExpandAll} className="hover:text-[#E0E0E0] transition-colors">
+          <div className="flex gap-2 text-[#6B7280] dark:text-[#808080]">
+            <button onClick={onExpandAll} className="hover:text-[#1F2937] dark:hover:text-[#E0E0E0] transition-colors">
               <ChevronDown className="h-3 w-3" />
             </button>
-            <button onClick={onCollapseAll} className="hover:text-[#E0E0E0] transition-colors">
+            <button onClick={onCollapseAll} className="hover:text-[#1F2937] dark:hover:text-[#E0E0E0] transition-colors">
               <ChevronRight className="h-3 w-3" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 bg-[#0F0F11]">
+        <div className="flex-1 bg-[#F7F8FA] dark:bg-[#0F0F11]">
           <Editor
             height="100%"
             language={outputMonacoLanguage}

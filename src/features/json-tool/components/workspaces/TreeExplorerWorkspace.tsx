@@ -361,7 +361,7 @@ export function TreeExplorerWorkspace({
         <div key={pointer || '$'} className="text-xs">
           <div
             className={`flex items-center gap-1.5 rounded px-2 py-1 cursor-pointer ${
-              isSelected ? 'bg-blue-500/15 text-blue-200' : 'text-[#D0D0D0] hover:bg-[#1D1D20]'
+              isSelected ? 'bg-blue-500/15 text-blue-200' : 'text-[#334155] dark:text-[#D0D0D0] hover:bg-[#1D1D20]'
             }`}
             style={{ paddingLeft: `${depth * 14 + 8}px` }}
             onClick={() => {
@@ -372,7 +372,7 @@ export function TreeExplorerWorkspace({
             {isContainer ? (
               <button
                 type="button"
-                className="flex h-4 w-4 items-center justify-center text-[#7F8792] hover:text-[#D0D0D0]"
+                className="flex h-4 w-4 items-center justify-center text-[#64748B] dark:text-[#7F8792] hover:text-[#334155] dark:text-[#D0D0D0]"
                 onClick={(event) => {
                   event.stopPropagation();
                   setExpandedPointers((previous) => {
@@ -392,8 +392,8 @@ export function TreeExplorerWorkspace({
               <span className="block h-4 w-4" />
             )}
 
-            <span className="font-mono text-[11px] text-[#9AA0A6]">{nodeLabel}</span>
-            <span className="text-[10px] uppercase tracking-wide text-[#6F7780]">{nodeType}</span>
+            <span className="font-mono text-[11px] text-[#6B7280] dark:text-[#9AA0A6]">{nodeLabel}</span>
+            <span className="text-[10px] uppercase tracking-wide text-[#6B7280] dark:text-[#6F7780]">{nodeType}</span>
             <span className="truncate text-[11px] text-[#B8BDC7]">{getPreviewText(value)}</span>
           </div>
 
@@ -412,12 +412,12 @@ export function TreeExplorerWorkspace({
 
   return (
     <>
-      <section className="flex min-h-[260px] md:min-h-0 flex-col border-b border-[#262626] md:border-b-0 md:border-r">
-        <div className="flex items-center justify-between px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+      <section className="flex min-h-[260px] md:min-h-0 flex-col border-b border-[#D8DEE6] dark:border-[#262626] md:border-b-0 md:border-r">
+        <div className="flex items-center justify-between px-4 py-2 bg-[#FFFFFF] dark:bg-[#121214] text-[10px] font-mono text-[#6B7280] dark:text-[#606060] border-b border-[#D8DEE6] dark:border-[#262626]">
           <span>JSON_INPUT</span>
           <span>UTF-8</span>
         </div>
-        <div className="flex-1 bg-[#0F0F11]">
+        <div className="flex-1 bg-[#F7F8FA] dark:bg-[#0F0F11]">
           <Editor
             height="100%"
             language="json"
@@ -440,18 +440,18 @@ export function TreeExplorerWorkspace({
         </div>
       </section>
 
-      <section className="flex min-h-[260px] md:min-h-0 flex-col bg-[#0F0F11]">
-        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-[#121214] text-[10px] font-mono text-[#606060] border-b border-[#262626]">
+      <section className="flex min-h-[260px] md:min-h-0 flex-col bg-[#F7F8FA] dark:bg-[#0F0F11]">
+        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-[#FFFFFF] dark:bg-[#121214] text-[10px] font-mono text-[#6B7280] dark:text-[#606060] border-b border-[#D8DEE6] dark:border-[#262626]">
           <span className="text-blue-400 border-b border-blue-500 pb-1">TREE_EXPLORER + PATH_INSPECTOR</span>
           <div className="flex items-center gap-2">
             <button
-              className="px-2 py-1 rounded border border-[#333] hover:border-blue-500 text-[#9AA0A6]"
+              className="px-2 py-1 rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 text-[#6B7280] dark:text-[#9AA0A6]"
               onClick={() => setExpandedPointers(new Set(allContainerPointers))}
             >
               Expand All
             </button>
             <button
-              className="px-2 py-1 rounded border border-[#333] hover:border-blue-500 text-[#9AA0A6]"
+              className="px-2 py-1 rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 text-[#6B7280] dark:text-[#9AA0A6]"
               onClick={() => setExpandedPointers(new Set(['']))}
             >
               Collapse
@@ -462,11 +462,11 @@ export function TreeExplorerWorkspace({
         {parsed.error ? (
           <div className="p-4 text-xs text-red-400 font-mono">Parse Error: {parsed.error}</div>
         ) : parsed.isEmpty ? (
-          <div className="p-4 text-xs text-[#808080]">Nhập JSON để xem tree explorer.</div>
+          <div className="p-4 text-xs text-[#6B7280] dark:text-[#808080]">Nhập JSON để xem tree explorer.</div>
         ) : (
           <>
             <div className="flex-1 min-h-[180px] overflow-auto p-2">{renderTreeNode(parsed.value, [], 0)}</div>
-            <aside className="border-t border-[#262626] bg-[#121214] p-3 space-y-3">
+            <aside className="border-t border-[#D8DEE6] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#121214] p-3 space-y-3">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -477,7 +477,7 @@ export function TreeExplorerWorkspace({
                       handleSelectByPathInput();
                     }
                   }}
-                  className="flex-1 bg-[#0F0F11] border border-[#333] rounded px-2.5 py-1.5 text-xs font-mono text-[#E0E0E0] outline-none focus:border-blue-500"
+                  className="flex-1 bg-[#F7F8FA] dark:bg-[#0F0F11] border border-[#C7D0DB] dark:border-[#333] rounded px-2.5 py-1.5 text-xs font-mono text-[#1F2937] dark:text-[#E0E0E0] outline-none focus:border-blue-500"
                   placeholder="Nhập JSON Pointer (/a/0/b) hoặc JSONPath ($.a[0].b)"
                 />
                 <button
@@ -491,29 +491,29 @@ export function TreeExplorerWorkspace({
               {pathError && <div className="text-[11px] text-red-400">{pathError}</div>}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded border border-[#2F2F31] bg-[#17171A] px-2 py-1.5">
-                  <div className="text-[#7F8792] mb-0.5">JSONPath</div>
-                  <div className="font-mono text-[#D0D0D0] break-all">{selectedJsonPath}</div>
+                <div className="rounded border border-[#D0D7E2] dark:border-[#2F2F31] bg-[#F5F6F8] dark:bg-[#17171A] px-2 py-1.5">
+                  <div className="text-[#64748B] dark:text-[#7F8792] mb-0.5">JSONPath</div>
+                  <div className="font-mono text-[#334155] dark:text-[#D0D0D0] break-all">{selectedJsonPath}</div>
                 </div>
-                <div className="rounded border border-[#2F2F31] bg-[#17171A] px-2 py-1.5">
-                  <div className="text-[#7F8792] mb-0.5">JSON Pointer</div>
-                  <div className="font-mono text-[#D0D0D0] break-all">{selectedPointer || '/'}</div>
+                <div className="rounded border border-[#D0D7E2] dark:border-[#2F2F31] bg-[#F5F6F8] dark:bg-[#17171A] px-2 py-1.5">
+                  <div className="text-[#64748B] dark:text-[#7F8792] mb-0.5">JSON Pointer</div>
+                  <div className="font-mono text-[#334155] dark:text-[#D0D0D0] break-all">{selectedPointer || '/'}</div>
                 </div>
-                <div className="rounded border border-[#2F2F31] bg-[#17171A] px-2 py-1.5">
-                  <div className="text-[#7F8792] mb-0.5">Type</div>
-                  <div className="font-mono text-[#D0D0D0]">{selectedType}</div>
+                <div className="rounded border border-[#D0D7E2] dark:border-[#2F2F31] bg-[#F5F6F8] dark:bg-[#17171A] px-2 py-1.5">
+                  <div className="text-[#64748B] dark:text-[#7F8792] mb-0.5">Type</div>
+                  <div className="font-mono text-[#334155] dark:text-[#D0D0D0]">{selectedType}</div>
                 </div>
-                <div className="rounded border border-[#2F2F31] bg-[#17171A] px-2 py-1.5">
-                  <div className="text-[#7F8792] mb-0.5">Depth / Size</div>
-                  <div className="font-mono text-[#D0D0D0]">
+                <div className="rounded border border-[#D0D7E2] dark:border-[#2F2F31] bg-[#F5F6F8] dark:bg-[#17171A] px-2 py-1.5">
+                  <div className="text-[#64748B] dark:text-[#7F8792] mb-0.5">Depth / Size</div>
+                  <div className="font-mono text-[#334155] dark:text-[#D0D0D0]">
                     {selectedSegments.length} / {selectedSizeLabel}
                   </div>
                 </div>
               </div>
 
-              <div className="rounded border border-[#2F2F31] bg-[#17171A] p-2">
-                <div className="text-[#7F8792] text-[11px] mb-1">Node Value</div>
-                <pre className="text-[11px] text-[#D0D0D0] font-mono whitespace-pre-wrap break-all max-h-40 overflow-auto">
+              <div className="rounded border border-[#D0D7E2] dark:border-[#2F2F31] bg-[#F5F6F8] dark:bg-[#17171A] p-2">
+                <div className="text-[#64748B] dark:text-[#7F8792] text-[11px] mb-1">Node Value</div>
+                <pre className="text-[11px] text-[#334155] dark:text-[#D0D0D0] font-mono whitespace-pre-wrap break-all max-h-40 overflow-auto">
                   {stringifyForInspector(selectedValue)}
                 </pre>
               </div>

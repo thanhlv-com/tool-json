@@ -31,28 +31,28 @@ export function DiffActionBar({ diffReport, diffParseError, errorStatus, onForma
       ? 'text-red-400'
       : diffReport?.equal
       ? 'text-emerald-400'
-      : 'text-[#808080]';
+      : 'text-[#6B7280] dark:text-[#808080]';
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 sm:px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-2">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 sm:px-6 py-2 bg-[#F3F5F7] dark:bg-[#1A1A1C] border-b border-[#D8DEE6] dark:border-[#262626] gap-2">
       <div className="flex items-center gap-3">
-        <div className="text-[10px] font-mono text-[#606060] uppercase tracking-wider">Original Source</div>
+        <div className="text-[10px] font-mono text-[#6B7280] dark:text-[#606060] uppercase tracking-wider">Original Source</div>
         <button
           onClick={onFormat}
-          className="rounded border border-[#2E2E30] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#A8A8AA] transition-colors hover:border-[#4A4A4D] hover:text-[#E0E0E0]"
+          className="rounded border border-[#D0D7E2] dark:border-[#2E2E30] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#4B5563] dark:text-[#A8A8AA] transition-colors hover:border-[#94A3B8] dark:hover:border-[#4A4A4D] hover:text-[#1F2937] dark:hover:text-[#E0E0E0]"
         >
           Format
         </button>
         <HelpPopupButton
           title={getModeGuideTitle('diff')}
           buttonLabel="View Guide"
-          buttonClassName="rounded border border-[#2E2E30] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#A8A8AA] transition-colors hover:border-[#4A4A4D] hover:text-[#E0E0E0]"
+          buttonClassName="rounded border border-[#D0D7E2] dark:border-[#2E2E30] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#4B5563] dark:text-[#A8A8AA] transition-colors hover:border-[#94A3B8] dark:hover:border-[#4A4A4D] hover:text-[#1F2937] dark:hover:text-[#E0E0E0]"
         >
           <ModeGuideContent mode="diff" />
         </HelpPopupButton>
         <button
           onClick={onShare}
-          className="rounded border border-[#2E2E30] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#A8A8AA] transition-colors hover:border-[#4A4A4D] hover:text-[#E0E0E0]"
+          className="rounded border border-[#D0D7E2] dark:border-[#2E2E30] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#4B5563] dark:text-[#A8A8AA] transition-colors hover:border-[#94A3B8] dark:hover:border-[#4A4A4D] hover:text-[#1F2937] dark:hover:text-[#E0E0E0]"
         >
           <span className="flex items-center gap-1">
             <Share2 className="h-3 w-3" />
@@ -61,7 +61,7 @@ export function DiffActionBar({ diffReport, diffParseError, errorStatus, onForma
         </button>
       </div>
       <div className={`text-[10px] font-mono tracking-wider break-words ${statusClassName}`}>{statusText}</div>
-      <div className="hidden sm:block text-[10px] font-mono text-[#606060] uppercase tracking-wider">Modified Target</div>
+      <div className="hidden sm:block text-[10px] font-mono text-[#6B7280] dark:text-[#606060] uppercase tracking-wider">Modified Target</div>
     </div>
   );
 }

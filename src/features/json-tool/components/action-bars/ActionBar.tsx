@@ -154,12 +154,12 @@ export function ActionBar({
           : 'result.json';
 
   return (
-    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between px-3 sm:px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-2">
+    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between px-3 sm:px-6 py-2 bg-[#F3F5F7] dark:bg-[#1A1A1C] border-b border-[#D8DEE6] dark:border-[#262626] gap-2">
       <div className="flex flex-wrap gap-2">
         {!hideFormat && (
           <button
             onClick={onFormat}
-            className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+            className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
           >
             <AlignLeft className="w-3.5 h-3.5" /> Format
           </button>
@@ -167,7 +167,7 @@ export function ActionBar({
         {!hideMinify && (
           <button
             onClick={onMinify}
-            className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+            className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
           >
             <Minimize2 className="w-3.5 h-3.5" /> Minify
           </button>
@@ -180,7 +180,7 @@ export function ActionBar({
         </button>
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Upload className="w-3.5 h-3.5" /> Open
         </button>
@@ -202,24 +202,24 @@ export function ActionBar({
       <div className="flex flex-wrap items-center gap-2 min-w-0">
         {mode === 'query' && (
           <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
-            <div className="px-2 py-1 bg-[#262626] rounded text-[10px] font-bold text-blue-400 border border-[#333]">JSONPath</div>
+            <div className="px-2 py-1 bg-[#E6EBF1] dark:bg-[#262626] rounded text-[10px] font-bold text-blue-400 border border-[#C7D0DB] dark:border-[#333]">JSONPath</div>
             <input
               type="text"
               value={jsonPath}
               onChange={(event) => onJsonPathChange(event.target.value)}
-              className="bg-[#121214] border border-[#333] text-xs text-[#A0A0A0] outline-none rounded px-3 py-1 w-full sm:w-64 font-mono focus:border-blue-500 transition-colors hover:border-[#555]"
+              className="bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] text-xs text-[#4B5563] dark:text-[#A0A0A0] outline-none rounded px-3 py-1 w-full sm:w-64 font-mono focus:border-blue-500 transition-colors hover:border-[#555]"
               placeholder="$.features"
             />
           </div>
         )}
 
         {mode === 'convert' && (
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#A0A0A0] shrink-0">
-            <span className="text-[#808080]">Target</span>
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#4B5563] dark:text-[#A0A0A0] shrink-0">
+            <span className="text-[#6B7280] dark:text-[#808080]">Target</span>
             <select
               value={convertTargetFormat}
               onChange={(event) => onConvertTargetFormatChange(event.target.value as ConvertTargetFormat)}
-              className="bg-[#121214] border border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
+              className="bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
             >
               <option value="yaml">YAML</option>
               <option value="xml">XML</option>
@@ -227,18 +227,18 @@ export function ActionBar({
               <option value="typescriptDto">TypeScript DTO</option>
               <option value="javaDto">Java DTO</option>
             </select>
-            {convertSourceFormat && <span className="text-[#6F7780]">from {convertSourceFormat.toUpperCase()}</span>}
+            {convertSourceFormat && <span className="text-[#6B7280] dark:text-[#6F7780]">from {convertSourceFormat.toUpperCase()}</span>}
           </div>
         )}
 
         {mode === 'convertCsv' && (
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#A0A0A0]">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#4B5563] dark:text-[#A0A0A0]">
             <label className="flex items-center gap-1.5">
-              <span className="text-[#808080]">Delimiter</span>
+              <span className="text-[#6B7280] dark:text-[#808080]">Delimiter</span>
               <select
                 value={csvOptions.delimiter}
                 onChange={(event) => onCsvDelimiterChange(event.target.value as CsvOptions['delimiter'])}
-                className="bg-[#121214] border border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
+                className="bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
               >
                 <option value=",">Comma (,)</option>
                 <option value=";">Semicolon (;)</option>
@@ -257,11 +257,11 @@ export function ActionBar({
             </label>
 
             <label className="flex items-center gap-1.5">
-              <span className="text-[#808080]">Quote</span>
+              <span className="text-[#6B7280] dark:text-[#808080]">Quote</span>
               <select
                 value={csvOptions.quoteStrategy}
                 onChange={(event) => onCsvQuoteStrategyChange(event.target.value as CsvOptions['quoteStrategy'])}
-                className="bg-[#121214] border border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
+                className="bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
               >
                 <option value="auto">Auto</option>
                 <option value="always">Always</option>
@@ -269,11 +269,11 @@ export function ActionBar({
             </label>
 
             <label className="flex items-center gap-1.5">
-              <span className="text-[#808080]">Escape</span>
+              <span className="text-[#6B7280] dark:text-[#808080]">Escape</span>
               <select
                 value={csvOptions.escapeStrategy}
                 onChange={(event) => onCsvEscapeStrategyChange(event.target.value as CsvOptions['escapeStrategy'])}
-                className="bg-[#121214] border border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
+                className="bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
               >
                 <option value="double">Double quote</option>
                 <option value="backslash">Backslash</option>
@@ -283,13 +283,13 @@ export function ActionBar({
         )}
 
         {mode === 'schemaValidate' && (
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#A0A0A0]">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#4B5563] dark:text-[#A0A0A0]">
             <label className="flex items-center gap-1.5">
-              <span className="text-[#808080]">Draft</span>
+              <span className="text-[#6B7280] dark:text-[#808080]">Draft</span>
               <select
                 value={schemaDraft}
                 onChange={(event) => onSchemaDraftChange(event.target.value as SchemaDraft)}
-                className="bg-[#121214] border border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
+                className="bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] rounded px-2 py-1 focus:border-blue-500 outline-none"
               >
                 <option value="draft-07">Draft-07</option>
                 <option value="2019-09">2019-09</option>
@@ -297,34 +297,34 @@ export function ActionBar({
               </select>
             </label>
             <label className="flex items-center gap-1.5">
-              <span className="text-[#808080]">Keywords</span>
+              <span className="text-[#6B7280] dark:text-[#808080]">Keywords</span>
               <input
                 type="text"
                 value={schemaCustomKeywordsInput}
                 onChange={(event) => onSchemaCustomKeywordsInputChange(event.target.value)}
                 placeholder="x-team-rule,x-data-scope"
-                className="bg-[#121214] border border-[#333] text-xs text-[#A0A0A0] outline-none rounded px-2 py-1 w-56 font-mono focus:border-blue-500 transition-colors"
+                className="bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] text-xs text-[#4B5563] dark:text-[#A0A0A0] outline-none rounded px-2 py-1 w-56 font-mono focus:border-blue-500 transition-colors"
               />
             </label>
           </div>
         )}
 
         {mode === 'schemaMock' && (
-          <label className="flex items-center gap-1.5 text-[11px] text-[#A0A0A0]">
-            <span className="text-[#808080]">Rows</span>
+          <label className="flex items-center gap-1.5 text-[11px] text-[#4B5563] dark:text-[#A0A0A0]">
+            <span className="text-[#6B7280] dark:text-[#808080]">Rows</span>
             <input
               type="number"
               min={1}
               max={200}
               value={mockDataCount}
               onChange={(event) => onMockDataCountChange(Number(event.target.value))}
-              className="bg-[#121214] border border-[#333] text-xs text-[#A0A0A0] outline-none rounded px-2 py-1 w-24 font-mono focus:border-blue-500 transition-colors"
+              className="bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] text-xs text-[#4B5563] dark:text-[#A0A0A0] outline-none rounded px-2 py-1 w-24 font-mono focus:border-blue-500 transition-colors"
             />
           </label>
         )}
 
         {mode === 'privacy' && (
-          <label className="flex items-center gap-2 text-[11px] text-[#A0A0A0]">
+          <label className="flex items-center gap-2 text-[11px] text-[#4B5563] dark:text-[#A0A0A0]">
             <input
               type="checkbox"
               checked={privacyPreviewMaskedOnly}
@@ -350,25 +350,25 @@ export function ActionBar({
         <HelpPopupButton
           title={getModeGuideTitle(mode)}
           buttonLabel="View Guide"
-          buttonClassName="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          buttonClassName="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <ModeGuideContent mode={mode} />
         </HelpPopupButton>
         <button
           onClick={onShare}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Share2 className="w-3.5 h-3.5" /> Share
         </button>
         <button
           onClick={() => onCopy(output)}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Copy className="w-3.5 h-3.5" /> Copy
         </button>
         <button
           onClick={() => onDownload(output, downloadFilename)}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Download className="w-3.5 h-3.5" /> Down
         </button>

@@ -34,7 +34,7 @@ export function PatchActionBar({
   const patchInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
-    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between px-3 sm:px-6 py-2 bg-[#1A1A1C] border-b border-[#262626] gap-2">
+    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between px-3 sm:px-6 py-2 bg-[#F3F5F7] dark:bg-[#1A1A1C] border-b border-[#D8DEE6] dark:border-[#262626] gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={onGeneratePatch}
@@ -44,26 +44,26 @@ export function PatchActionBar({
         </button>
         <button
           onClick={onApplyPatch}
-          className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="px-3 py-1 flex items-center gap-1.5 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Wand2 className="w-3.5 h-3.5" /> Apply Patch
         </button>
 
         <button
           onClick={() => baseInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Upload className="w-3.5 h-3.5" /> Open Base
         </button>
         <button
           onClick={() => targetInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Upload className="w-3.5 h-3.5" /> Open Target
         </button>
         <button
           onClick={() => patchInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Upload className="w-3.5 h-3.5" /> Open Patch
         </button>
@@ -125,25 +125,25 @@ export function PatchActionBar({
         <HelpPopupButton
           title={getModeGuideTitle('patch')}
           buttonLabel="View Guide"
-          buttonClassName="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          buttonClassName="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <ModeGuideContent mode="patch" />
         </HelpPopupButton>
         <button
           onClick={onShare}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Share2 className="w-3.5 h-3.5" /> Share
         </button>
         <button
           onClick={() => onCopy(output)}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Copy className="w-3.5 h-3.5" /> Copy
         </button>
         <button
           onClick={() => onDownload(output, 'patch-result.json')}
-          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#333] hover:border-blue-500 bg-[#1F1F21] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-[#C7D0DB] dark:border-[#333] hover:border-blue-500 bg-[#FFFFFF] dark:bg-[#1F1F21] transition-colors"
         >
           <Download className="w-3.5 h-3.5" /> Down
         </button>

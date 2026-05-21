@@ -179,7 +179,7 @@ export function JsonToolPage() {
   }, [mode]);
 
   return (
-    <div className="min-h-[100dvh] w-full bg-[#0F0F11] text-[#E0E0E0] font-sans">
+    <div className="min-h-[100dvh] w-full bg-[#F7F8FA] dark:bg-[#0F0F11] text-[#1F2937] dark:text-[#E0E0E0] font-sans">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[2200px] flex-col overflow-hidden">
         <TopNavigation
           mode={mode}
@@ -275,7 +275,7 @@ export function JsonToolPage() {
             />
           )}
 
-          <main className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 bg-[#0F0F11] overflow-hidden">
+          <main className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 bg-[#F7F8FA] dark:bg-[#0F0F11] overflow-hidden">
             {mode === 'diff' ? (
               <DiffWorkspace
                 theme={theme}
