@@ -52,13 +52,6 @@ export default defineConfig(({mode}) => {
               },
             },
             {
-              urlPattern: ({request}) => ['style', 'script', 'worker'].includes(request.destination),
-              handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'app-static-resources',
-              },
-            },
-            {
               urlPattern: ({request}) => request.destination === 'font',
               handler: 'CacheFirst',
               options: {
