@@ -1459,6 +1459,10 @@ type JavaDtoContext = {
   requiresListImport: boolean;
 };
 
+function buildJavaDtoClassAnnotationBlock(indent = ''): string {
+  return `${indent}@Data\n${indent}@NoArgsConstructor\n${indent}@AllArgsConstructor`;
+}
+
 function resolveJavaDtoType(type: DtoInferredType, nameHint: string, context: JavaDtoContext): string {
   if (type.kind === 'object') {
     const signature = serializeDtoType(type);
@@ -1481,11 +1485,12 @@ function resolveJavaDtoType(type: DtoInferredType, nameHint: string, context: Ja
         if (fieldName !== key) {
           fieldLines.push(`    // JSON key: ${escapeJavaCommentText(key)}`);
         }
-        fieldLines.push(`    public ${fieldType} ${fieldName};`);
+        fieldLines.push(`    private ${fieldType} ${fieldName};`);
       });
 
     const body = fieldLines.length > 0 ? fieldLines.join('\n') : '    // empty object';
-    context.nestedClassCodeByName.set(className, `  public static class ${className} {\n${body}\n  }`);
+    const nestedAnnotationBlock = buildJavaDtoClassAnnotationBlock('  ');
+    context.nestedClassCodeByName.set(className, `${nestedAnnotationBlock}\n  public static class ${className} {\n${body}\n  }`);
     return className;
   }
 
@@ -1517,7 +1522,7 @@ function buildJavaRootClassBody(
 ): string {
   if (rootType.kind !== 'object') {
     const rootValueType = resolveJavaDtoType(rootType, `${rootClassName}Value`, context);
-    return `  public ${rootValueType} value;`;
+    return `  private ${rootValueType} value;`;
   }
 
   const rootSignature = serializeDtoType(rootType);
@@ -1534,7 +1539,7 @@ function buildJavaRootClassBody(
       if (fieldName !== key) {
         fieldLines.push(`  // JSON key: ${escapeJavaCommentText(key)}`);
       }
-      fieldLines.push(`  public ${fieldType} ${fieldName};`);
+      fieldLines.push(`  private ${fieldType} ${fieldName};`);
     });
 
   return fieldLines.length > 0 ? fieldLines.join('\n') : '  // empty object';
@@ -1554,10 +1559,18 @@ export function convertJsonToJavaDto(value: unknown, rootClassName = 'RootDto'):
   const nestedClassCodes = [...context.nestedClassCodeByName.entries()]
     .filter(([name]) => name !== normalizedRootClassName)
     .map(([, code]) => code);
-  const importBlock = context.requiresListImport ? 'import java.util.List;\n\n' : '';
+  const importBlock = [
+    'import lombok.AllArgsConstructor;',
+    'import lombok.Data;',
+    'import lombok.NoArgsConstructor;',
+    context.requiresListImport ? 'import java.util.List;' : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+  const rootAnnotationBlock = buildJavaDtoClassAnnotationBlock();
   const nestedBlock = nestedClassCodes.length > 0 ? `\n\n${nestedClassCodes.join('\n\n')}` : '';
 
-  return `${importBlock}public class ${normalizedRootClassName} {\n${rootBody}${nestedBlock}\n}`;
+  return `${importBlock}\n\n${rootAnnotationBlock}\npublic class ${normalizedRootClassName} {\n${rootBody}${nestedBlock}\n}`;
 }
 
 export function escapeOrUnescapeJsonString(input: string): {
