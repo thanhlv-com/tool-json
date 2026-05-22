@@ -1,6 +1,7 @@
 import {
   AlignLeft,
   Braces,
+  ChevronRight,
   Link2,
   FileCode2,
   GitBranch,
@@ -15,8 +16,10 @@ import {
   SplitSquareHorizontal,
   Sun,
   Wand2,
+  X,
   type LucideIcon,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MODE_PATHS } from '../../modeRoutes';
 import type { Mode, ThemeMode } from '../../types';
@@ -69,6 +72,32 @@ export function TopNavigation({
   theme,
   onToggleTheme,
 }: TopNavigationProps) {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const activeModeOption = useMemo(
+    () => MODE_OPTIONS.find((modeOption) => modeOption.value === mode) ?? MODE_OPTIONS[0],
+    [mode],
+  );
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [mode]);
+
+  const ActiveModeIcon = activeModeOption.icon;
+
   return (
     <header className="border-b border-[#D8DEE6] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#161618] shrink-0">
       <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6">
@@ -121,18 +150,22 @@ export function TopNavigation({
 
       <div className="px-3 pb-3 sm:px-6">
         <div className="sm:hidden mb-2">
-          <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#9AA0A6]">Mode</label>
-          <select
-            value={mode}
-            onChange={(event) => onNavigateMode(event.target.value as Mode)}
-            className="mt-1 w-full bg-[#FFFFFF] dark:bg-[#121214] border border-[#C7D0DB] dark:border-[#333] rounded px-3 py-2 text-xs text-[#1F2937] dark:text-[#E0E0E0] outline-none focus:border-blue-500"
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="w-full flex items-center justify-between gap-2 rounded border border-[#C7D0DB] dark:border-[#333] bg-[#FFFFFF] dark:bg-[#121214] px-3 py-2 text-left"
+            aria-label="Open mode sidebar"
+            aria-expanded={isMobileSidebarOpen}
           >
-            {MODE_OPTIONS.map((modeOption) => (
-              <option key={modeOption.value} value={modeOption.value}>
-                {modeOption.label}
-              </option>
-            ))}
-          </select>
+            <div className="flex items-center gap-2 min-w-0">
+              <ActiveModeIcon className="w-4 h-4 text-[#4B5563] dark:text-[#A1A1AA] shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#9AA0A6]">Mode</div>
+                <div className="text-xs font-medium text-[#111827] dark:text-[#E0E0E0] truncate">{activeModeOption.label}</div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#6B7280] dark:text-[#9AA0A6] shrink-0" />
+          </button>
         </div>
 
         <nav className="hidden sm:flex gap-1 text-xs font-medium overflow-x-auto whitespace-nowrap pr-2">
@@ -154,6 +187,55 @@ export function TopNavigation({
           })}
         </nav>
       </div>
+
+      {isMobileSidebarOpen && (
+        <div className="sm:hidden fixed inset-0 z-50">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            aria-label="Close mode sidebar"
+          />
+          <aside className="absolute left-0 top-0 h-full w-[85%] max-w-[320px] border-r border-[#D8DEE6] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#161618] p-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-[#111827] dark:text-white">Select Mode</h2>
+              <button
+                type="button"
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="p-1.5 rounded-full hover:bg-[#E6EBF1] dark:hover:bg-[#262626] text-[#6B7280] dark:text-[#9AA0A6]"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <nav className="flex flex-col gap-1 overflow-y-auto max-h-[calc(100dvh-90px)] pr-1">
+              {MODE_OPTIONS.map((modeOption) => {
+                const Icon = modeOption.icon;
+                const isActive = mode === modeOption.value;
+
+                return (
+                  <button
+                    key={modeOption.value}
+                    type="button"
+                    onClick={() => onNavigateMode(modeOption.value)}
+                    className={`w-full flex items-center justify-between gap-2 rounded px-3 py-2 text-sm transition-colors ${
+                      isActive
+                        ? 'bg-[#E6EBF1] dark:bg-[#262626] text-[#111827] dark:text-white'
+                        : 'text-[#4B5563] dark:text-[#A1A1AA] hover:bg-[#EDF1F5] dark:hover:bg-[#202022]'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{modeOption.label}</span>
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+        </div>
+      )}
     </header>
   );
 }
