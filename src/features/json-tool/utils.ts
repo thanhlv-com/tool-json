@@ -1448,19 +1448,20 @@ function toJavaFieldName(key: string): string {
   return JAVA_RESERVED_WORDS.has(normalized) ? `${normalized}Value` : normalized;
 }
 
-function escapeJavaCommentText(value: string): string {
-  return value.replace(/\*\//g, '*\\/');
-}
-
 type JavaDtoContext = {
   classNameBySignature: Map<string, string>;
   nestedClassCodeByName: Map<string, string>;
   usedClassNames: Set<string>;
   requiresListImport: boolean;
+  requiresJsonPropertyImport: boolean;
 };
 
 function buildJavaDtoClassAnnotationBlock(indent = ''): string {
   return `${indent}@Data\n${indent}@NoArgsConstructor\n${indent}@AllArgsConstructor`;
+}
+
+function escapeJavaStringLiteral(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 function resolveJavaDtoType(type: DtoInferredType, nameHint: string, context: JavaDtoContext): string {
@@ -1483,7 +1484,8 @@ function resolveJavaDtoType(type: DtoInferredType, nameHint: string, context: Ja
         const fieldName = toJavaFieldName(key);
 
         if (fieldName !== key) {
-          fieldLines.push(`    // JSON key: ${escapeJavaCommentText(key)}`);
+          context.requiresJsonPropertyImport = true;
+          fieldLines.push(`    @JsonProperty("${escapeJavaStringLiteral(key)}")`);
         }
         fieldLines.push(`    private ${fieldType} ${fieldName};`);
       });
@@ -1537,7 +1539,8 @@ function buildJavaRootClassBody(
       const fieldName = toJavaFieldName(key);
 
       if (fieldName !== key) {
-        fieldLines.push(`  // JSON key: ${escapeJavaCommentText(key)}`);
+        context.requiresJsonPropertyImport = true;
+        fieldLines.push(`  @JsonProperty("${escapeJavaStringLiteral(key)}")`);
       }
       fieldLines.push(`  private ${fieldType} ${fieldName};`);
     });
@@ -1553,6 +1556,7 @@ export function convertJsonToJavaDto(value: unknown, rootClassName = 'RootDto'):
     nestedClassCodeByName: new Map(),
     usedClassNames: new Set([normalizedRootClassName]),
     requiresListImport: false,
+    requiresJsonPropertyImport: false,
   };
 
   const rootBody = buildJavaRootClassBody(inferredType, normalizedRootClassName, context);
@@ -1563,6 +1567,7 @@ export function convertJsonToJavaDto(value: unknown, rootClassName = 'RootDto'):
     'import lombok.AllArgsConstructor;',
     'import lombok.Data;',
     'import lombok.NoArgsConstructor;',
+    context.requiresJsonPropertyImport ? 'import com.fasterxml.jackson.annotation.JsonProperty;' : '',
     context.requiresListImport ? 'import java.util.List;' : '',
   ]
     .filter(Boolean)
