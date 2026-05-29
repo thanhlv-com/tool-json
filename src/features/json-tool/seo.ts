@@ -1,17 +1,17 @@
 import { MODE_PATHS } from './modeRoutes';
 import type { Mode } from './types';
 
-export const SITE_NAME = 'JSON Dev Tool';
-export const SITE_URL = 'https://json-tools.thanhlv.com';
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/pwa-512x512.svg`;
-export const PAGE_SCHEMA_ID = 'ld-json-page';
+const SITE_NAME = 'JSON Dev Tool';
+const SITE_URL = 'https://json-tools.thanhlv.com';
+const DEFAULT_OG_IMAGE = `${SITE_URL}/pwa-512x512.svg`;
+const PAGE_SCHEMA_ID = 'ld-json-page';
 
 type ModeSeoConfig = {
   title: string;
   description: string;
 };
 
-export const MODE_SEO: Record<Mode, ModeSeoConfig> = {
+const MODE_SEO: Record<Mode, ModeSeoConfig> = {
   format: {
     title: 'JSON Editor & Validator',
     description: 'Format, minify, and validate JSON instantly in a fast online editor.',
@@ -119,20 +119,36 @@ function upsertJsonLdScript(id: string, payload: Record<string, unknown>): void 
   document.head.appendChild(script);
 }
 
-export type SeoSnapshot = {
-  fullTitle: string;
-  description: string;
-  canonicalPath: string;
-  canonicalUrl: string;
-  pageSchema: Record<string, unknown>;
-};
+export function applySeoForMode(mode: Mode): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
 
-export function getSeoSnapshot(mode: Mode): SeoSnapshot {
   const seo = MODE_SEO[mode];
   const canonicalPath = MODE_PATHS[mode];
   const canonicalUrl = toAbsoluteUrl(canonicalPath);
   const fullTitle = `${seo.title} | ${SITE_NAME}`;
-  const pageSchema = {
+
+  document.title = fullTitle;
+
+  upsertMetaTag('name', 'description', seo.description);
+  upsertMetaTag('name', 'robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+
+  upsertMetaTag('property', 'og:type', 'website');
+  upsertMetaTag('property', 'og:site_name', SITE_NAME);
+  upsertMetaTag('property', 'og:title', fullTitle);
+  upsertMetaTag('property', 'og:description', seo.description);
+  upsertMetaTag('property', 'og:url', canonicalUrl);
+  upsertMetaTag('property', 'og:image', DEFAULT_OG_IMAGE);
+
+  upsertMetaTag('name', 'twitter:card', 'summary_large_image');
+  upsertMetaTag('name', 'twitter:title', fullTitle);
+  upsertMetaTag('name', 'twitter:description', seo.description);
+  upsertMetaTag('name', 'twitter:image', DEFAULT_OG_IMAGE);
+
+  upsertCanonicalLink(canonicalUrl);
+
+  upsertJsonLdScript(PAGE_SCHEMA_ID, {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: fullTitle,
@@ -144,41 +160,5 @@ export function getSeoSnapshot(mode: Mode): SeoSnapshot {
       name: SITE_NAME,
       url: `${SITE_URL}/`,
     },
-  };
-
-  return {
-    fullTitle,
-    description: seo.description,
-    canonicalPath,
-    canonicalUrl,
-    pageSchema,
-  };
-}
-
-export function applySeoForMode(mode: Mode): void {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
-  const seo = getSeoSnapshot(mode);
-
-  document.title = seo.fullTitle;
-
-  upsertMetaTag('name', 'description', seo.description);
-  upsertMetaTag('name', 'robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
-
-  upsertMetaTag('property', 'og:type', 'website');
-  upsertMetaTag('property', 'og:site_name', SITE_NAME);
-  upsertMetaTag('property', 'og:title', seo.fullTitle);
-  upsertMetaTag('property', 'og:description', seo.description);
-  upsertMetaTag('property', 'og:url', seo.canonicalUrl);
-  upsertMetaTag('property', 'og:image', DEFAULT_OG_IMAGE);
-
-  upsertMetaTag('name', 'twitter:card', 'summary_large_image');
-  upsertMetaTag('name', 'twitter:title', seo.fullTitle);
-  upsertMetaTag('name', 'twitter:description', seo.description);
-  upsertMetaTag('name', 'twitter:image', DEFAULT_OG_IMAGE);
-
-  upsertCanonicalLink(seo.canonicalUrl);
-  upsertJsonLdScript(PAGE_SCHEMA_ID, seo.pageSchema);
+  });
 }

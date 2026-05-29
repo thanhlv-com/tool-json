@@ -141,12 +141,11 @@ Tài liệu này mô tả hành vi thực tế theo code hiện tại trong `src
   - Merge: `Open Left`, `Open Right`.
 - Download tên file theo mode/output language (`.json`, `.yaml`, `.xml`, `.properties`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
 
-## 8. Responsive, PWA, SSG
+## 8. Responsive và PWA
 
 - Mobile dùng dropdown mode selector, desktop dùng tab ngang.
 - Layout workspace tự đổi số cột theo breakpoint.
 - PWA qua `vite-plugin-pwa`, có service worker + manifest, cache runtime cho page/static/font/image.
-- SSG prerender qua `npm run ssg`: build sinh `dist/<route>/index.html` cho từng mode route (bao gồm cả legacy `/yaml`) với metadata SEO tĩnh theo route.
 
 ## 9. Validation checklist cho thay đổi feature
 

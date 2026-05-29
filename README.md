@@ -21,9 +21,6 @@ npm run build
 npm run preview
 ```
 
-`npm run build` sẽ chạy `vite build` và prerender SSG để tạo HTML tĩnh theo route trong `dist/<route>/index.html`.
-Nếu cần chạy lại prerender riêng: `npm run ssg`.
-
 ## Danh sách mode hiện có
 
 - `/editor`: JSON editor (format, minify, validate).
@@ -56,7 +53,6 @@ Lưu ý route cũ `/yaml` vẫn được nhận để tương thích link cũ, s
 - Shortcut chính: `Ctrl/Cmd + Enter` (run), `Ctrl/Cmd + Shift + F` (format), `Ctrl/Cmd + Shift + M` (minify).
 - Hỗ trợ download output theo định dạng phù hợp (`.json`, `.yaml`, `.xml`, `.properties`, `.ts`, `.java`, `.csv`, `.tsv`, `.txt`, `patch-result.json`).
 - Offline-first PWA: build tạo service worker + web manifest, cache local các asset chính để app vẫn mở và thao tác được trong điều kiện mạng chập chờn/mất mạng.
-- SSG prerender theo mode route: build sinh HTML tĩnh cho các route (`/editor`, `/diff`, `/merge`, ...), mỗi route có `title/meta/canonical/JSON-LD` riêng phục vụ SEO khi crawl không chạy JS.
 - Responsive layout cho mobile/tablet/desktop: mobile dùng mode dropdown, từ `sm` trở lên dùng tab navigation cuộn ngang; workspace tự đổi số cột theo kích thước màn hình và action bar tự wrap controls.
 
 ## Cấu trúc chính
