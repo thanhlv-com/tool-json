@@ -409,6 +409,9 @@ export function JsonToolPage() {
             )}
           </main>
         </div>
+        <footer className="shrink-0 text-center py-3 text-sm text-[#6B7280] dark:text-[#808080]">
+          Check out more tools at link.thanhlv.com
+        </footer>
       </div>
     </div>
   );
