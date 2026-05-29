@@ -410,7 +410,15 @@ export function JsonToolPage() {
           </main>
         </div>
         <footer className="shrink-0 text-center py-3 text-sm text-[#6B7280] dark:text-[#808080]">
-          Check out more tools at link.thanhlv.com
+          Check out more tools at{' '}
+          <a
+            href="https://link.thanhlv.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#2563EB] underline hover:text-[#1D4ED8] dark:text-[#60A5FA] dark:hover:text-[#93C5FD]"
+          >
+            link.thanhlv.com
+          </a>
         </footer>
       </div>
     </div>
